@@ -8,6 +8,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { supabase } from '../../src/lib/supabase';
@@ -35,7 +36,12 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.inner}>
-        <Text style={styles.logo}>Fitfiles</Text>
+        <Image
+          source={require('../../assets/icon.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <Text style={styles.title}>Fitfiles</Text>
         <Text style={styles.subtitle}>Your workout link library</Text>
 
         <TextInput
@@ -83,9 +89,15 @@ const styles = StyleSheet.create({
   inner: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: Spacing.lg,
   },
   logo: {
+    width: 120,
+    height: 120,
+    marginBottom: Spacing.md,
+  },
+  title: {
     color: Colors.primary,
     fontSize: 40,
     fontWeight: '800',
@@ -108,6 +120,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     height: 50,
     marginBottom: Spacing.md,
+    width: '100%',
   },
   button: {
     backgroundColor: Colors.primary,
@@ -116,6 +129,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: Spacing.sm,
+    width: '100%',
   },
   buttonDisabled: { opacity: 0.6 },
   buttonText: {
