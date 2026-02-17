@@ -1,23 +1,32 @@
 export const Colors = {
-  primary: '#E76F51',
-  primaryDark: '#C45B3F',
-  primaryLight: '#EE9078',
-  background: '#0D1B2A',
-  surface: '#1B2838',
-  surfaceLight: '#1B3A4B',
-  card: '#162A3A',
-  text: '#FEFAE0',
-  textSecondary: '#B8B4A0',
-  textMuted: '#6E6B5E',
-  accent: '#F4A261',
-  success: '#4CAF50',
-  warning: '#F4A261',
-  border: '#1E3044',
-  inputBg: '#1B2838',
-  chipBg: '#1E3044',
-  chipActive: '#E76F51',
-  overlay: 'rgba(0,0,0,0.5)',
-  favorite: '#E76F51',
+  // Primary palette
+  primary: '#3B82F6',         // Ice Blue — main interactive color
+  primaryDark: '#2563EB',     // Darker blue for pressed states
+  primaryLight: '#60A5FA',    // Lighter blue for hover/highlights
+  background: '#0B1220',      // Midnight Navy — app background
+  surface: '#111B2E',         // Slightly lifted navy for surfaces
+  surfaceLight: '#1A2740',    // Lighter navy for elevated elements
+  card: '#152233',            // Card background
+  text: '#F1F5F9',            // Soft Fog — primary text
+  textSecondary: '#94A3B8',   // Muted fog — secondary text
+  textMuted: '#475569',       // Dimmed — hint text
+  accent: '#5EEAD4',          // Aqua Mint — secondary accent
+  success: '#5EEAD4',         // Aqua Mint — success states
+  warning: '#F97316',         // Sunset Orange — warnings
+  border: '#1E293B',          // Dark navy border
+  inputBg: '#111B2E',        // Same as surface
+  chipBg: '#1E293B',          // Border-like dark
+  chipActive: '#3B82F6',      // Ice Blue — active chips
+  overlay: 'rgba(11,18,32,0.7)',
+  favorite: '#FB7185',        // Coral Pulse — favorites/hearts
+
+  // Extended palette (for category tags, charts, etc.)
+  coralPulse: '#FB7185',
+  softMagenta: '#EC4899',
+  sunsetOrange: '#F97316',
+  sunriseYellow: '#FACC15',
+  iceBlue: '#3B82F6',
+  aquaMint: '#5EEAD4',
 };
 
 export const Spacing = {

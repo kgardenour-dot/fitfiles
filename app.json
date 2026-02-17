@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "scheme": "fitfiles",
     "splash": {
-      "backgroundColor": "#0D1B2A"
+      "backgroundColor": "#0B1220"
     },
     "ios": {
       "supportsTablet": true,
@@ -16,7 +16,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0D1B2A"
+        "backgroundColor": "#0B1220"
       },
       "package": "com.banditinnovations.fitfiles"
     },
