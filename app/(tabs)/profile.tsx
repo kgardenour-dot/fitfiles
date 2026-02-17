@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,7 +13,7 @@ export default function ProfileScreen() {
   const { tier, isPro, limits } = useEntitlements(profile);
 
   const handleSignOut = () => {
-    Alert.alert('Sign Out', 'Are you sure?', [
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: signOut },
     ]);
@@ -25,20 +25,22 @@ export default function ProfileScreen() {
         <Text style={styles.headerTitle}>Profile</Text>
       </View>
 
+      {/* User card */}
       <View style={styles.section}>
         <View style={styles.avatarRow}>
           <View style={styles.avatar}>
-            <Ionicons name="person" size={32} color={Colors.primary} />
+            <Ionicons name="person" size={32} color={Colors.aquaMint} />
           </View>
           <View style={styles.userInfo}>
             <Text style={styles.email}>{user?.email ?? ''}</Text>
-            <View style={styles.badge}>
+            <View style={[styles.badge, isPro && styles.badgePro]}>
               <Text style={styles.badgeText}>{tier.toUpperCase()}</Text>
             </View>
           </View>
         </View>
       </View>
 
+      {/* Plan details */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Plan Details</Text>
         <View style={styles.planRow}>
@@ -47,7 +49,7 @@ export default function ProfileScreen() {
             {isPro ? 'Unlimited' : limits.maxWorkouts}
           </Text>
         </View>
-        <View style={styles.planRow}>
+        <View style={[styles.planRow, { borderBottomWidth: 0 }]}>
           <Text style={styles.planLabel}>Max Collections</Text>
           <Text style={styles.planValue}>
             {isPro ? 'Unlimited' : limits.maxCollections}
@@ -55,17 +57,28 @@ export default function ProfileScreen() {
         </View>
       </View>
 
+      {/* Upgrade button */}
       {!isPro && (
-        <TouchableOpacity style={styles.upgradeBtn} onPress={() => router.push('/upgrade')}>
-          <Ionicons name="rocket-outline" size={20} color={Colors.text} />
+        <TouchableOpacity style={styles.upgradeBtn} onPress={() => router.push('/upgrade')} activeOpacity={0.8}>
+          <Ionicons name="rocket-outline" size={20} color="#FFFFFF" />
           <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
         </TouchableOpacity>
       )}
 
-      <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
-        <Ionicons name="log-out-outline" size={20} color={Colors.accent} />
+      {/* Sign Out */}
+      <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
+        <Ionicons name="log-out-outline" size={20} color={Colors.coralPulse} />
         <Text style={styles.signOutBtnText}>Sign Out</Text>
       </TouchableOpacity>
+
+      {/* Logo at bottom */}
+      <View style={styles.logoContainer}>
+        <Image
+          source={require('../../assets/fitfiles_logo.png')}
+          style={styles.bottomLogo}
+          resizeMode="contain"
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -90,6 +103,8 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.md,
     marginBottom: Spacing.md,
     padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   sectionTitle: {
     color: Colors.textSecondary,
@@ -107,7 +122,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.aquaMint + '20',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.md,
@@ -121,15 +136,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   badge: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.iceBlue,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     borderRadius: BorderRadius.sm,
     alignSelf: 'flex-start',
     marginTop: Spacing.xs,
   },
+  badgePro: {
+    backgroundColor: Colors.sunriseYellow,
+  },
   badgeText: {
-    color: Colors.text,
+    color: '#FFFFFF',
     fontSize: FontSize.xs,
     fontWeight: '700',
   },
@@ -145,7 +163,7 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
   },
   planValue: {
-    color: Colors.text,
+    color: Colors.aquaMint,
     fontSize: FontSize.sm,
     fontWeight: '600',
   },
@@ -153,15 +171,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.coralPulse,
     borderRadius: BorderRadius.lg,
     marginHorizontal: Spacing.md,
     marginBottom: Spacing.md,
     padding: Spacing.md,
     gap: Spacing.sm,
+    shadowColor: Colors.coralPulse,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
   },
   upgradeBtnText: {
-    color: Colors.text,
+    color: '#FFFFFF',
     fontSize: FontSize.md,
     fontWeight: '700',
   },
@@ -174,10 +197,23 @@ const styles = StyleSheet.create({
     marginHorizontal: Spacing.md,
     padding: Spacing.md,
     gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.coralPulse + '40',
   },
   signOutBtnText: {
-    color: Colors.accent,
+    color: Colors.coralPulse,
     fontSize: FontSize.md,
     fontWeight: '600',
+  },
+  logoContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingBottom: Spacing.md,
+  },
+  bottomLogo: {
+    width: 120,
+    height: 32,
+    opacity: 0.4,
   },
 });

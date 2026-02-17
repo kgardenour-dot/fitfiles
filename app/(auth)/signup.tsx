@@ -8,6 +8,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  ScrollView,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { supabase } from '../../src/lib/supabase';
@@ -42,105 +44,193 @@ export default function SignUpScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.inner}>
-        <Text style={styles.logo}>Fitfiles</Text>
-        <Text style={styles.subtitle}>Create your account</Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Decorative dots */}
+        <View style={styles.decorTop}>
+          <View style={[styles.dot, styles.dotYellow, { top: 30, left: 50 }]} />
+          <View style={[styles.dot, styles.dotBlue, { top: 50, right: 60 }]} />
+          <View style={[styles.dotSmall, styles.dotCoral, { top: 20, right: 110 }]} />
+          <View style={[styles.dotSmall, styles.dotAqua, { top: 70, left: 100 }]} />
+          <View style={[styles.dot, styles.dotLavender, { top: 15, left: 160 }]} />
+        </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor={Colors.textMuted}
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          textContentType="emailAddress"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password (min 6 characters)"
-          placeholderTextColor={Colors.textMuted}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          textContentType="newPassword"
+        {/* Logo */}
+        <Image
+          source={require('../../assets/fitfiles_logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
         />
 
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleSignUp}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>{loading ? 'Creating account...' : 'Sign Up'}</Text>
-        </TouchableOpacity>
+        {/* Heading */}
+        <Text style={styles.title}>Join FitFiles!</Text>
+        <Text style={styles.subtitle}>Save, tag & organize every workout</Text>
+
+        {/* Form */}
+        <View style={styles.form}>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor={Colors.textMuted}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            textContentType="emailAddress"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password (min 6 characters)"
+            placeholderTextColor={Colors.textMuted}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            textContentType="newPassword"
+          />
+
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleSignUp}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.buttonText}>
+              {loading ? 'Creating account...' : 'Create Account'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <Link href="/(auth)/login" asChild>
           <TouchableOpacity style={styles.linkBtn}>
             <Text style={styles.linkText}>
-              Already have an account? <Text style={styles.linkTextBold}>Sign In</Text>
+              Already have an account?{' '}
+              <Text style={styles.linkTextBold}>Sign In</Text>
             </Text>
           </TouchableOpacity>
         </Link>
-      </View>
+
+        {/* Decorative bottom dots */}
+        <View style={styles.decorBottom}>
+          <View style={[styles.dot, styles.dotOrange, { bottom: 15, right: 40 }]} />
+          <View style={[styles.dotSmall, styles.dotMagenta, { bottom: 30, left: 70 }]} />
+          <View style={[styles.dotSmall, styles.dotBlue, { bottom: 10, left: 150 }]} />
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  inner: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xl,
   },
+  decorTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 120,
+  },
+  decorBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+  },
+  dot: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    opacity: 0.6,
+  },
+  dotSmall: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    opacity: 0.5,
+  },
+  dotCoral: { backgroundColor: Colors.coralPulse },
+  dotAqua: { backgroundColor: Colors.aquaMint },
+  dotYellow: { backgroundColor: Colors.sunriseYellow },
+  dotLavender: { backgroundColor: Colors.lavender },
+  dotOrange: { backgroundColor: Colors.sunsetOrange },
+  dotBlue: { backgroundColor: Colors.iceBlue },
+  dotMagenta: { backgroundColor: Colors.softMagenta },
+
   logo: {
-    color: Colors.primary,
-    fontSize: 40,
+    width: 260,
+    height: 100,
+    marginBottom: Spacing.lg,
+  },
+  title: {
+    color: Colors.text,
+    fontSize: FontSize.hero,
     fontWeight: '800',
     textAlign: 'center',
   },
   subtitle: {
-    color: Colors.textSecondary,
+    color: Colors.sunriseYellow,
     fontSize: FontSize.md,
     textAlign: 'center',
     marginBottom: Spacing.xl,
     marginTop: Spacing.xs,
+    fontWeight: '500',
+  },
+  form: {
+    width: '100%',
   },
   input: {
-    backgroundColor: Colors.inputBg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.inputBorder,
+    borderRadius: BorderRadius.lg,
     color: Colors.text,
     fontSize: FontSize.md,
     paddingHorizontal: Spacing.md,
-    height: 50,
+    height: 52,
     marginBottom: Spacing.md,
   },
   button: {
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-    height: 50,
+    backgroundColor: Colors.aquaMint,
+    borderRadius: BorderRadius.lg,
+    height: 52,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: Spacing.sm,
+    shadowColor: Colors.aquaMint,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonDisabled: { opacity: 0.6 },
   buttonText: {
-    color: Colors.text,
-    fontSize: FontSize.md,
+    color: Colors.background,
+    fontSize: FontSize.lg,
     fontWeight: '700',
   },
   linkBtn: {
     marginTop: Spacing.lg,
     alignItems: 'center',
+    paddingVertical: Spacing.sm,
   },
   linkText: {
     color: Colors.textSecondary,
     fontSize: FontSize.sm,
   },
   linkTextBold: {
-    color: Colors.primary,
-    fontWeight: '600',
+    color: Colors.coralPulse,
+    fontWeight: '700',
   },
 });

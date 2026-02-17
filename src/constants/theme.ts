@@ -20,13 +20,23 @@ export const Colors = {
   overlay: 'rgba(11,18,32,0.7)',
   favorite: '#FB7185',        // Coral Pulse — favorites/hearts
 
-  // Extended palette (for category tags, charts, etc.)
+  // Extended palette (for category tags, charts, decorations)
   coralPulse: '#FB7185',
   softMagenta: '#EC4899',
   sunsetOrange: '#F97316',
   sunriseYellow: '#FACC15',
   iceBlue: '#3B82F6',
   aquaMint: '#5EEAD4',
+  lavender: '#A78BFA',
+
+  // Functional accents
+  buttonPrimary: '#FB7185',     // Coral — main CTA buttons
+  buttonPrimaryDark: '#E11D48', // Pressed coral
+  tabActive: '#5EEAD4',         // Aqua Mint — active tab
+  headerAccent: '#60A5FA',      // Light blue for header elements
+  cardBorder: '#1E293B',
+  inputBorder: '#2D3A50',       // Slightly brighter input borders
+  inputFocusBorder: '#5EEAD4',  // Aqua on focus
 };
 
 export const Spacing = {
@@ -44,6 +54,7 @@ export const FontSize = {
   lg: 18,
   xl: 22,
   xxl: 28,
+  hero: 36,
 };
 
 export const BorderRadius = {

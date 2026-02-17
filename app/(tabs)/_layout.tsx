@@ -7,7 +7,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Colors.primary,
+        tabBarActiveTintColor: Colors.aquaMint,
         tabBarInactiveTintColor: Colors.textMuted,
         tabBarStyle: {
           backgroundColor: Colors.surface,
@@ -19,6 +19,7 @@ export default function TabLayout() {
         },
         tabBarLabelStyle: {
           fontSize: FontSize.xs,
+          fontWeight: '600',
         },
       }}
     >

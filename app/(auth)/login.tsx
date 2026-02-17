@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ScrollView,
 } from 'react-native';
 import { Link } from 'expo-router';
 import { supabase } from '../../src/lib/supabase';
@@ -35,118 +36,193 @@ export default function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.inner}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Decorative dots */}
+        <View style={styles.decorTop}>
+          <View style={[styles.dot, styles.dotCoral, { top: 20, left: 30 }]} />
+          <View style={[styles.dot, styles.dotAqua, { top: 60, right: 40 }]} />
+          <View style={[styles.dot, styles.dotYellow, { top: 10, right: 100 }]} />
+          <View style={[styles.dotSmall, styles.dotLavender, { top: 80, left: 60 }]} />
+          <View style={[styles.dotSmall, styles.dotOrange, { top: 40, left: 140 }]} />
+        </View>
+
+        {/* Logo */}
         <Image
-          source={require('../../assets/icon.png')}
+          source={require('../../assets/fitfiles_logo.png')}
           style={styles.logo}
           resizeMode="contain"
         />
-        <Text style={styles.title}>Fitfiles</Text>
+
+        {/* Welcome text */}
+        <Text style={styles.title}>Welcome back!</Text>
         <Text style={styles.subtitle}>Your workout link library</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor={Colors.textMuted}
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          textContentType="emailAddress"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor={Colors.textMuted}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          textContentType="password"
-        />
+        {/* Form */}
+        <View style={styles.form}>
+          <TextInput
+            style={styles.input}
+            placeholder="Email"
+            placeholderTextColor={Colors.textMuted}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            textContentType="emailAddress"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            placeholderTextColor={Colors.textMuted}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            textContentType="password"
+          />
 
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          <Text style={styles.buttonText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.buttonText}>{loading ? 'Signing in...' : 'Sign In'}</Text>
+          </TouchableOpacity>
+        </View>
 
         <Link href="/(auth)/signup" asChild>
           <TouchableOpacity style={styles.linkBtn}>
             <Text style={styles.linkText}>
-              Don't have an account? <Text style={styles.linkTextBold}>Sign Up</Text>
+              Don't have an account?{' '}
+              <Text style={styles.linkTextBold}>Sign Up</Text>
             </Text>
           </TouchableOpacity>
         </Link>
-      </View>
+
+        {/* Decorative bottom dots */}
+        <View style={styles.decorBottom}>
+          <View style={[styles.dotSmall, styles.dotBlue, { bottom: 20, right: 50 }]} />
+          <View style={[styles.dot, styles.dotMagenta, { bottom: 10, left: 40 }]} />
+          <View style={[styles.dotSmall, styles.dotAqua, { bottom: 40, left: 120 }]} />
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  inner: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xl,
   },
-  logo: {
-    width: 120,
+  decorTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     height: 120,
-    marginBottom: Spacing.md,
+  },
+  decorBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 80,
+  },
+  dot: {
+    position: 'absolute',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    opacity: 0.6,
+  },
+  dotSmall: {
+    position: 'absolute',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    opacity: 0.5,
+  },
+  dotCoral: { backgroundColor: Colors.coralPulse },
+  dotAqua: { backgroundColor: Colors.aquaMint },
+  dotYellow: { backgroundColor: Colors.sunriseYellow },
+  dotLavender: { backgroundColor: Colors.lavender },
+  dotOrange: { backgroundColor: Colors.sunsetOrange },
+  dotBlue: { backgroundColor: Colors.iceBlue },
+  dotMagenta: { backgroundColor: Colors.softMagenta },
+
+  logo: {
+    width: 260,
+    height: 100,
+    marginBottom: Spacing.lg,
   },
   title: {
-    color: Colors.primary,
-    fontSize: 40,
+    color: Colors.text,
+    fontSize: FontSize.hero,
     fontWeight: '800',
     textAlign: 'center',
   },
   subtitle: {
-    color: Colors.textSecondary,
+    color: Colors.aquaMint,
     fontSize: FontSize.md,
     textAlign: 'center',
     marginBottom: Spacing.xl,
     marginTop: Spacing.xs,
+    fontWeight: '500',
+  },
+  form: {
+    width: '100%',
   },
   input: {
-    backgroundColor: Colors.inputBg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surface,
+    borderWidth: 1.5,
+    borderColor: Colors.inputBorder,
+    borderRadius: BorderRadius.lg,
     color: Colors.text,
     fontSize: FontSize.md,
     paddingHorizontal: Spacing.md,
-    height: 50,
+    height: 52,
     marginBottom: Spacing.md,
     width: '100%',
   },
   button: {
-    backgroundColor: Colors.primary,
-    borderRadius: BorderRadius.md,
-    height: 50,
+    backgroundColor: Colors.coralPulse,
+    borderRadius: BorderRadius.lg,
+    height: 52,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: Spacing.sm,
     width: '100%',
+    shadowColor: Colors.coralPulse,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonDisabled: { opacity: 0.6 },
   buttonText: {
-    color: Colors.text,
-    fontSize: FontSize.md,
+    color: '#FFFFFF',
+    fontSize: FontSize.lg,
     fontWeight: '700',
   },
   linkBtn: {
     marginTop: Spacing.lg,
     alignItems: 'center',
+    paddingVertical: Spacing.sm,
   },
   linkText: {
     color: Colors.textSecondary,
     fontSize: FontSize.sm,
   },
   linkTextBold: {
-    color: Colors.primary,
-    fontWeight: '600',
+    color: Colors.aquaMint,
+    fontWeight: '700',
   },
 });

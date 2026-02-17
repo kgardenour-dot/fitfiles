@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Text,
   ScrollView,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -66,11 +67,21 @@ export default function LibraryScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
+      {/* Header with logo */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Library</Text>
-        <TouchableOpacity onPress={() => router.push('/save')}>
-          <Ionicons name="add-circle" size={32} color={Colors.primary} />
+        <View style={styles.headerLeft}>
+          <Image
+            source={require('../../assets/fitfiles_logo.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
+        </View>
+        <TouchableOpacity
+          style={styles.addBtn}
+          onPress={() => router.push('/save')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="add" size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
@@ -86,7 +97,7 @@ export default function LibraryScreen() {
           <Ionicons
             name="options-outline"
             size={22}
-            color={showFilters ? Colors.text : Colors.textMuted}
+            color={showFilters ? Colors.aquaMint : Colors.textMuted}
           />
         </TouchableOpacity>
       </View>
@@ -164,7 +175,7 @@ export default function LibraryScreen() {
             />
           )
         }
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={Colors.primary} />}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={Colors.aquaMint} />}
       />
     </SafeAreaView>
   );
@@ -182,10 +193,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
   },
-  headerTitle: {
-    color: Colors.text,
-    fontSize: FontSize.xxl,
-    fontWeight: '800',
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 140,
+    height: 36,
+  },
+  addBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.coralPulse,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: Colors.coralPulse,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   searchRow: {
     flexDirection: 'row',
@@ -204,7 +231,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   filterBtnActive: {
-    borderColor: Colors.primary,
+    borderColor: Colors.aquaMint,
     backgroundColor: Colors.surfaceLight,
   },
   sortRow: {
@@ -228,8 +255,9 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   clearFilters: {
-    color: Colors.accent,
+    color: Colors.coralPulse,
     fontSize: FontSize.sm,
+    fontWeight: '600',
   },
   list: {
     padding: Spacing.md,

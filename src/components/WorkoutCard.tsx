@@ -64,6 +64,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     flexDirection: 'row',
     height: 120,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   thumbnail: {
     width: 120,
@@ -97,8 +99,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   duration: {
-    color: Colors.primaryLight,
+    color: Colors.aquaMint,
     fontSize: FontSize.xs,
+    fontWeight: '600',
     marginTop: 2,
   },
   tags: {

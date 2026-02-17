@@ -43,8 +43,8 @@ const styles = StyleSheet.create({
     borderColor: Colors.border,
   },
   chipActive: {
-    backgroundColor: Colors.chipActive,
-    borderColor: Colors.primaryLight,
+    backgroundColor: Colors.aquaMint,
+    borderColor: Colors.aquaMint,
   },
   chipSmall: {
     paddingHorizontal: Spacing.sm,
@@ -55,8 +55,8 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
   },
   labelActive: {
-    color: Colors.text,
-    fontWeight: '600',
+    color: Colors.background,
+    fontWeight: '700',
   },
   labelSmall: {
     fontSize: FontSize.xs,
