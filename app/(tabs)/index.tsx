@@ -191,18 +191,20 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingTop: 0,
+    paddingBottom: 0,
   },
   headerLeft: {
+    flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   headerLogo: {
     width: '100%',
     height: 180,
-    alignSelf: 'flex-start',
+    marginLeft: -Spacing.md,
   },
   addBtn: {
     width: 40,
