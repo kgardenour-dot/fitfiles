@@ -12,6 +12,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Link } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../src/lib/supabase';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
 
@@ -40,6 +41,7 @@ export default function SignUpScreen() {
   };
 
   return (
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -120,6 +122,7 @@ export default function SignUpScreen() {
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -168,9 +171,10 @@ const styles = StyleSheet.create({
   dotBlue: { backgroundColor: Colors.iceBlue },
   dotMagenta: { backgroundColor: Colors.softMagenta },
 
+  safeArea: { flex: 1, backgroundColor: Colors.background },
   logo: {
-    width: 260,
-    height: 100,
+    width: '100%',
+    height: 300,
     marginBottom: Spacing.lg,
   },
   title: {

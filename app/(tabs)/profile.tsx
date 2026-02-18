@@ -20,7 +20,7 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
       </View>
@@ -212,8 +212,8 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.md,
   },
   bottomLogo: {
-    width: 120,
-    height: 32,
+    width: 180,
+    height: 48,
     opacity: 0.4,
   },
 });
