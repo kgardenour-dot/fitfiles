@@ -159,8 +159,8 @@ const styles = StyleSheet.create({
   dotMagenta: { backgroundColor: Colors.softMagenta },
 
   logo: {
-    width: 260,
-    height: 100,
+    width: 340,
+    height: 130,
     marginBottom: Spacing.lg,
   },
   title: {
