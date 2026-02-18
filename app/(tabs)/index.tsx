@@ -198,8 +198,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerLogo: {
-    width: 260,
-    height: 68,
+    width: '70%',
+    height: 90,
   },
   addBtn: {
     width: 40,
