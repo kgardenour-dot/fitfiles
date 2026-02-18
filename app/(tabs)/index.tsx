@@ -25,7 +25,7 @@ import { TagType } from '../../src/types/database';
 const SORT_OPTIONS: { key: SortOption; label: string }[] = [
   { key: 'recent', label: 'Recently Added' },
   { key: 'opened', label: 'Recently Opened' },
-  { key: 'favorites', label: 'Favs' },
+  { key: 'favorites', label: 'Faves' },
 ];
 
 export default function LibraryScreen() {
