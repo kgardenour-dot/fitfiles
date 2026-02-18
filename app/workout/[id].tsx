@@ -19,6 +19,7 @@ import { useCollections } from '../../src/hooks/useCollections';
 import { WorkoutLinkWithTags } from '../../src/types/database';
 import { Chip } from '../../src/components/Chip';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
+import { ConfettiDots } from '../../src/components/ConfettiDots';
 
 export default function WorkoutDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -117,6 +118,7 @@ export default function WorkoutDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <ConfettiDots />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>

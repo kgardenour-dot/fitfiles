@@ -15,6 +15,7 @@ import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../src/lib/supabase';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
+import { ConfettiDots } from '../../src/components/ConfettiDots';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -43,31 +44,7 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Decorative dots */}
-        <View style={styles.decorLayer} pointerEvents="none">
-          {/* Top area */}
-          <View style={[styles.dot, styles.dotCoral, { top: 20, left: 30 }]} />
-          <View style={[styles.dot, styles.dotAqua, { top: 60, right: 40 }]} />
-          <View style={[styles.dot, styles.dotYellow, { top: 10, right: 100 }]} />
-          <View style={[styles.dotSmall, styles.dotLavender, { top: 80, left: 60 }]} />
-          <View style={[styles.dotSmall, styles.dotOrange, { top: 40, left: 140 }]} />
-          <View style={[styles.dotSmall, styles.dotBlue, { top: 25, left: '55%' }]} />
-          <View style={[styles.dot, styles.dotMagenta, { top: 70, right: 90 }]} />
-          {/* Middle area */}
-          <View style={[styles.dotSmall, styles.dotCoral, { top: '35%', left: 15 }]} />
-          <View style={[styles.dot, styles.dotLavender, { top: '40%', right: 20 }]} />
-          <View style={[styles.dotSmall, styles.dotYellow, { top: '50%', left: 25 }]} />
-          <View style={[styles.dot, styles.dotAqua, { top: '55%', right: 15 }]} />
-          <View style={[styles.dotSmall, styles.dotOrange, { top: '45%', right: 35 }]} />
-          {/* Bottom area */}
-          <View style={[styles.dotSmall, styles.dotBlue, { bottom: 100, right: 50 }]} />
-          <View style={[styles.dot, styles.dotMagenta, { bottom: 70, left: 40 }]} />
-          <View style={[styles.dotSmall, styles.dotAqua, { bottom: 120, left: 120 }]} />
-          <View style={[styles.dot, styles.dotYellow, { bottom: 50, right: 80 }]} />
-          <View style={[styles.dotSmall, styles.dotCoral, { bottom: 30, left: '50%' }]} />
-          <View style={[styles.dot, styles.dotOrange, { bottom: 80, left: 20 }]} />
-          <View style={[styles.dotSmall, styles.dotLavender, { bottom: 140, right: 30 }]} />
-        </View>
+        <ConfettiDots />
 
         {/* Logo */}
         <Image
@@ -137,38 +114,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingTop: Spacing.md,
   },
-  decorLayer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
   spacer: {
     flex: 1,
   },
-  dot: {
-    position: 'absolute',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    opacity: 0.6,
-  },
-  dotSmall: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    opacity: 0.5,
-  },
-  dotCoral: { backgroundColor: Colors.coralPulse },
-  dotAqua: { backgroundColor: Colors.aquaMint },
-  dotYellow: { backgroundColor: Colors.sunriseYellow },
-  dotLavender: { backgroundColor: Colors.lavender },
-  dotOrange: { backgroundColor: Colors.sunsetOrange },
-  dotBlue: { backgroundColor: Colors.iceBlue },
-  dotMagenta: { backgroundColor: Colors.softMagenta },
-
   safeArea: { flex: 1, backgroundColor: Colors.background },
   logo: {
     width: '100%',

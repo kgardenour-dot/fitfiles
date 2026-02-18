@@ -3,12 +3,14 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/constants/theme';
+import { ConfettiDots } from '../src/components/ConfettiDots';
 
 export default function UpgradeScreen() {
   const router = useRouter();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <ConfettiDots />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="close" size={28} color={Colors.text} />

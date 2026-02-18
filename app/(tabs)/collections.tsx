@@ -18,6 +18,7 @@ import { useAuth } from '../../src/hooks/useAuth';
 import { useEntitlements } from '../../src/hooks/useEntitlements';
 import { EmptyState } from '../../src/components/EmptyState';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
+import { ConfettiDots } from '../../src/components/ConfettiDots';
 
 const FOLDER_COLORS = [
   Colors.iceBlue,
@@ -76,6 +77,7 @@ export default function CollectionsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <ConfettiDots />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Collections</Text>
         <TouchableOpacity

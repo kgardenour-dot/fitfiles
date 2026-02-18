@@ -20,6 +20,7 @@ import { useTags } from '../../src/hooks/useTags';
 import { TagSelector } from '../../src/components/TagSelector';
 import { WorkoutLinkWithTags, TagType } from '../../src/types/database';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
+import { ConfettiDots } from '../../src/components/ConfettiDots';
 
 export default function EditWorkoutScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -116,6 +117,7 @@ export default function EditWorkoutScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <ConfettiDots />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

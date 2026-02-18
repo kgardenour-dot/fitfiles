@@ -24,6 +24,7 @@ import { fetchOGMetadata, extractDomain } from '../src/lib/og-scraper';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/constants/theme';
 import { TagType } from '../src/types/database';
 import { DEFAULT_TAGS } from '../src/constants/tags';
+import { ConfettiDots } from '../src/components/ConfettiDots';
 
 export default function SaveScreen() {
   const router = useRouter();
@@ -136,6 +137,7 @@ export default function SaveScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <ConfettiDots />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

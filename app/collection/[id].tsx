@@ -19,6 +19,7 @@ import { WorkoutCard } from '../../src/components/WorkoutCard';
 import { EmptyState } from '../../src/components/EmptyState';
 import { Collection, WorkoutLinkWithTags } from '../../src/types/database';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
+import { ConfettiDots } from '../../src/components/ConfettiDots';
 
 export default function CollectionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -77,6 +78,7 @@ export default function CollectionDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <ConfettiDots />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color={Colors.text} />

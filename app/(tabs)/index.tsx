@@ -21,6 +21,7 @@ import { EmptyState } from '../../src/components/EmptyState';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
 import { TAG_TYPE_LABELS } from '../../src/constants/tags';
 import { TagType } from '../../src/types/database';
+import { ConfettiDots } from '../../src/components/ConfettiDots';
 
 const SORT_OPTIONS: { key: SortOption; label: string }[] = [
   { key: 'recent', label: 'Recently Added' },
@@ -67,6 +68,7 @@ export default function LibraryScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <ConfettiDots />
       {/* Header with logo */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -198,8 +200,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerLogo: {
-    width: '70%',
-    height: 90,
+    width: '100%',
+    height: 180,
   },
   addBtn: {
     width: 40,

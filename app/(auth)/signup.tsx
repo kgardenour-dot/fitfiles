@@ -15,6 +15,7 @@ import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../src/lib/supabase';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
+import { ConfettiDots } from '../../src/components/ConfettiDots';
 
 export default function SignUpScreen() {
   const [email, setEmail] = useState('');
@@ -51,14 +52,7 @@ export default function SignUpScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Decorative dots */}
-        <View style={styles.decorTop}>
-          <View style={[styles.dot, styles.dotYellow, { top: 30, left: 50 }]} />
-          <View style={[styles.dot, styles.dotBlue, { top: 50, right: 60 }]} />
-          <View style={[styles.dotSmall, styles.dotCoral, { top: 20, right: 110 }]} />
-          <View style={[styles.dotSmall, styles.dotAqua, { top: 70, left: 100 }]} />
-          <View style={[styles.dot, styles.dotLavender, { top: 15, left: 160 }]} />
-        </View>
+        <ConfettiDots />
 
         {/* Logo */}
         <Image
@@ -114,12 +108,6 @@ export default function SignUpScreen() {
           </TouchableOpacity>
         </Link>
 
-        {/* Decorative bottom dots */}
-        <View style={styles.decorBottom}>
-          <View style={[styles.dot, styles.dotOrange, { bottom: 15, right: 40 }]} />
-          <View style={[styles.dotSmall, styles.dotMagenta, { bottom: 30, left: 70 }]} />
-          <View style={[styles.dotSmall, styles.dotBlue, { bottom: 10, left: 150 }]} />
-        </View>
       </ScrollView>
     </KeyboardAvoidingView>
     </SafeAreaView>
@@ -135,42 +123,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.xl,
   },
-  decorTop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 120,
-  },
-  decorBottom: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 80,
-  },
-  dot: {
-    position: 'absolute',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    opacity: 0.6,
-  },
-  dotSmall: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    opacity: 0.5,
-  },
-  dotCoral: { backgroundColor: Colors.coralPulse },
-  dotAqua: { backgroundColor: Colors.aquaMint },
-  dotYellow: { backgroundColor: Colors.sunriseYellow },
-  dotLavender: { backgroundColor: Colors.lavender },
-  dotOrange: { backgroundColor: Colors.sunsetOrange },
-  dotBlue: { backgroundColor: Colors.iceBlue },
-  dotMagenta: { backgroundColor: Colors.softMagenta },
-
   safeArea: { flex: 1, backgroundColor: Colors.background },
   logo: {
     width: '100%',

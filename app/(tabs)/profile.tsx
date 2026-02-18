@@ -6,6 +6,7 @@ import { useAuth } from '../../src/hooks/useAuth';
 import { useEntitlements } from '../../src/hooks/useEntitlements';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
 import { PLAN_LIMITS } from '../../src/constants/limits';
+import { ConfettiDots } from '../../src/components/ConfettiDots';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ConfettiDots />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
       </View>
