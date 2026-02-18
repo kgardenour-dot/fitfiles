@@ -69,15 +69,13 @@ export default function LibraryScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ConfettiDots />
-      {/* Header with logo */}
+      {/* Header: logo left, add button right */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Image
-            source={require('../../assets/fitfiles_logo.png')}
-            style={styles.headerLogo}
-            resizeMode="contain"
-          />
-        </View>
+        <Image
+          source={require('../../assets/fitfiles_logo.png')}
+          style={styles.headerLogo}
+          resizeMode="contain"
+        />
         <TouchableOpacity
           style={styles.addBtn}
           onPress={() => router.push('/save')}
@@ -190,20 +188,13 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingRight: Spacing.md,
-    paddingLeft: 0,
-    paddingTop: 0,
-    paddingBottom: 0,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
   },
   headerLogo: {
-    width: 200,
-    height: 180,
+    width: 180,
+    height: 70,
+    marginLeft: -Spacing.sm,
   },
   addBtn: {
     width: 40,
@@ -212,7 +203,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.coralPulse,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: Spacing.md,
+    marginLeft: 'auto',
     shadowColor: Colors.coralPulse,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -223,7 +214,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.md,
-    marginTop: -Spacing.xs,
+    marginTop: Spacing.xs,
     gap: Spacing.sm,
   },
   filterBtn: {
