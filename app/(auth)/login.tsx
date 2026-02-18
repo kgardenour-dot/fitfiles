@@ -43,13 +43,32 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Decorative dots */}
-        <View style={styles.decorTop}>
-          <View style={[styles.dot, styles.dotCoral, { top: 20, left: 30 }]} />
-          <View style={[styles.dot, styles.dotAqua, { top: 60, right: 40 }]} />
-          <View style={[styles.dot, styles.dotYellow, { top: 10, right: 100 }]} />
-          <View style={[styles.dotSmall, styles.dotLavender, { top: 80, left: 60 }]} />
-          <View style={[styles.dotSmall, styles.dotOrange, { top: 40, left: 140 }]} />
+        {/* Workout confetti */}
+        <View style={styles.confettiLayer} pointerEvents="none">
+          <Text style={[styles.confettiIcon, { top: '4%', left: 20, fontSize: 22, transform: [{ rotate: '-15deg' }] }]}>🏋️</Text>
+          <Text style={[styles.confettiIcon, { top: '3%', right: 30, fontSize: 18, transform: [{ rotate: '20deg' }] }]}>💪</Text>
+          <Text style={[styles.confettiIcon, { top: '8%', left: '40%', fontSize: 14, transform: [{ rotate: '10deg' }] }]}>⏱️</Text>
+          <Text style={[styles.confettiIcon, { top: '12%', right: 60, fontSize: 20, transform: [{ rotate: '-25deg' }] }]}>🏃</Text>
+          <Text style={[styles.confettiIcon, { top: '6%', left: '65%', fontSize: 16, transform: [{ rotate: '30deg' }] }]}>❤️</Text>
+          <Text style={[styles.confettiIcon, { top: '15%', left: 35, fontSize: 18, transform: [{ rotate: '12deg' }] }]}>👟</Text>
+          <Text style={[styles.confettiIcon, { top: '10%', right: 15, fontSize: 14, transform: [{ rotate: '-8deg' }] }]}>🔥</Text>
+          <Text style={[styles.confettiIcon, { top: '18%', left: '50%', fontSize: 16, transform: [{ rotate: '-20deg' }] }]}>🧘</Text>
+          <Text style={[styles.confettiIcon, { top: '2%', left: '20%', fontSize: 12, transform: [{ rotate: '45deg' }] }]}>💧</Text>
+          <Text style={[styles.confettiIcon, { top: '14%', right: '30%', fontSize: 15, transform: [{ rotate: '5deg' }] }]}>🏆</Text>
+
+          <Text style={[styles.confettiIcon, { bottom: '18%', left: 15, fontSize: 18, transform: [{ rotate: '25deg' }] }]}>🚴</Text>
+          <Text style={[styles.confettiIcon, { bottom: '12%', right: 25, fontSize: 22, transform: [{ rotate: '-10deg' }] }]}>🏋️</Text>
+          <Text style={[styles.confettiIcon, { bottom: '8%', left: '35%', fontSize: 16, transform: [{ rotate: '15deg' }] }]}>💪</Text>
+          <Text style={[styles.confettiIcon, { bottom: '4%', right: 50, fontSize: 14, transform: [{ rotate: '-30deg' }] }]}>🔥</Text>
+          <Text style={[styles.confettiIcon, { bottom: '15%', right: '40%', fontSize: 18, transform: [{ rotate: '8deg' }] }]}>👟</Text>
+          <Text style={[styles.confettiIcon, { bottom: '6%', left: 45, fontSize: 20, transform: [{ rotate: '-18deg' }] }]}>❤️</Text>
+          <Text style={[styles.confettiIcon, { bottom: '2%', left: '55%', fontSize: 14, transform: [{ rotate: '35deg' }] }]}>⏱️</Text>
+          <Text style={[styles.confettiIcon, { bottom: '10%', left: '15%', fontSize: 12, transform: [{ rotate: '-5deg' }] }]}>🏆</Text>
+
+          <Text style={[styles.confettiIcon, { top: '35%', left: 8, fontSize: 16, transform: [{ rotate: '22deg' }] }]}>🏃</Text>
+          <Text style={[styles.confettiIcon, { top: '50%', right: 10, fontSize: 14, transform: [{ rotate: '-12deg' }] }]}>🧘</Text>
+          <Text style={[styles.confettiIcon, { top: '42%', left: 12, fontSize: 12, transform: [{ rotate: '-28deg' }] }]}>💧</Text>
+          <Text style={[styles.confettiIcon, { top: '60%', right: 8, fontSize: 18, transform: [{ rotate: '18deg' }] }]}>🚴</Text>
         </View>
 
         {/* Logo */}
@@ -103,13 +122,6 @@ export default function LoginScreen() {
             </Text>
           </TouchableOpacity>
         </Link>
-
-        {/* Decorative bottom dots */}
-        <View style={styles.decorBottom}>
-          <View style={[styles.dotSmall, styles.dotBlue, { bottom: 20, right: 50 }]} />
-          <View style={[styles.dot, styles.dotMagenta, { bottom: 10, left: 40 }]} />
-          <View style={[styles.dotSmall, styles.dotAqua, { bottom: 40, left: 120 }]} />
-        </View>
       </ScrollView>
     </KeyboardAvoidingView>
     </SafeAreaView>
@@ -125,47 +137,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.xl,
   },
-  decorTop: {
+  confettiLayer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 120,
-  },
-  decorBottom: {
-    position: 'absolute',
     bottom: 0,
-    left: 0,
-    right: 0,
-    height: 80,
   },
-  dot: {
+  confettiIcon: {
     position: 'absolute',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    opacity: 0.6,
+    opacity: 0.45,
   },
-  dotSmall: {
-    position: 'absolute',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    opacity: 0.5,
-  },
-  dotCoral: { backgroundColor: Colors.coralPulse },
-  dotAqua: { backgroundColor: Colors.aquaMint },
-  dotYellow: { backgroundColor: Colors.sunriseYellow },
-  dotLavender: { backgroundColor: Colors.lavender },
-  dotOrange: { backgroundColor: Colors.sunsetOrange },
-  dotBlue: { backgroundColor: Colors.iceBlue },
-  dotMagenta: { backgroundColor: Colors.softMagenta },
 
   safeArea: { flex: 1, backgroundColor: Colors.background },
   logo: {
     width: '100%',
-    height: 300,
-    marginBottom: Spacing.lg,
+    height: 600,
+    marginBottom: Spacing.xs,
   },
   title: {
     color: Colors.text,
