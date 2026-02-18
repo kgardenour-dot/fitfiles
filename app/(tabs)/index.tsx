@@ -202,6 +202,7 @@ const styles = StyleSheet.create({
   headerLogo: {
     width: '100%',
     height: 180,
+    alignSelf: 'flex-start',
   },
   addBtn: {
     width: 40,
@@ -220,7 +221,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.md,
-    marginTop: Spacing.sm,
+    marginTop: -Spacing.xs,
     gap: Spacing.sm,
   },
   filterBtn: {
