@@ -41,6 +41,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
     borderWidth: 1,
     borderColor: Colors.border,
+    marginRight: Spacing.sm,
   },
   chipActive: {
     backgroundColor: Colors.aquaMint,

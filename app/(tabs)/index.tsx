@@ -198,8 +198,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   headerLogo: {
-    width: 180,
-    height: 48,
+    width: 220,
+    height: 58,
   },
   addBtn: {
     width: 40,
@@ -218,6 +218,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
     gap: Spacing.sm,
   },
   filterBtn: {
@@ -236,13 +237,13 @@ const styles = StyleSheet.create({
   },
   sortRow: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.md,
     flexGrow: 0,
     gap: Spacing.sm,
   },
   filterPanel: {
     paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.sm,
+    paddingBottom: Spacing.md,
   },
   filterTypes: {
     flexGrow: 0,
