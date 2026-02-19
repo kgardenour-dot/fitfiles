@@ -1,10 +1,10 @@
-# Fitfiles
+# FitLinks
 
 A personal workout-link library by **Bandit Innovations**. Save workout URLs from anywhere on the internet — YouTube, Instagram, blogs, PDFs — and organize them with tags and collections for quick retrieval.
 
 ## Architecture
 
-Fitfiles is a React Native (Expo + TypeScript) mobile app backed by Supabase (Postgres + Auth + Storage). The client communicates directly with Supabase via its JS client SDK for all CRUD, search, and filtering. Authentication uses Supabase Auth (email/password). Row-Level Security on every table ensures strict user isolation.
+FitLinks is a React Native (Expo + TypeScript) mobile app backed by Supabase (Postgres + Auth + Storage). The client communicates directly with Supabase via its JS client SDK for all CRUD, search, and filtering. Authentication uses Supabase Auth (email/password). Row-Level Security on every table ensures strict user isolation.
 
 The frontend uses a tab-based layout (Library, Collections, Profile) with stack navigators for detail/edit screens. Search and tag-based filtering use server-side Postgres queries (full-text search on title/notes, tag joins for filters). Subscription readiness is achieved through a `user_profiles` table with `plan_tier` and client-side gating logic — no billing integration in v1.
 
@@ -69,7 +69,7 @@ supabase/
 9. **Edit workout:** Change title, tags, notes, duration — verify updates persist.
 10. **Delete workout:** Confirm dialog, workout removed, cascade deletes join rows.
 11. **Collections CRUD:** Create, rename, delete collection. Add/remove workouts.
-12. **Entitlement gating:** With a free-tier profile, hit 50 workouts — save is blocked, upgrade screen shows. Same for 5 collections.
+12. **Entitlement gating:** With a free-tier profile, hit 10 workouts — save is blocked, upgrade screen shows. Same for 3 collections. Plus tier: 50 workouts, 10 collections.
 13. **RLS isolation:** With two users, verify neither can see the other's data via direct Supabase queries.
 
 ## Next Iteration

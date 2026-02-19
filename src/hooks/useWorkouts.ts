@@ -21,10 +21,10 @@ export function useWorkouts() {
         .from('workout_links')
         .select('*, workout_link_tags(tag_id, tags(*))');
 
-      // Full-text search on title + notes
+      // Full-text search on title + notes (uses search_vector tsvector column)
       if (options.search && options.search.trim()) {
-        const term = options.search.trim().split(/\s+/).join(' & ');
-        query = query.textSearch('title', term, { type: 'websearch', config: 'english' });
+        const term = options.search.trim();
+        query = query.textSearch('search_vector', term, { type: 'websearch', config: 'english' });
       }
 
       // Sort
@@ -74,13 +74,61 @@ export function useWorkouts() {
     async (
       workout: Omit<WorkoutLink, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'last_opened_at'>,
       tagIds: string[],
-    ) => {
+    ): Promise<{ data: WorkoutLink; wasDuplicate: boolean }> => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) throw new Error('You must be signed in to save a workout.');
+
+      const payload = {
+        ...workout,
+        user_id: userId,
+      };
+
       const { data, error } = await supabase
         .from('workout_links')
-        .insert(workout)
+        .insert(payload)
         .select()
         .single();
-      if (error) throw error;
+
+      if (error) {
+        if (error.code === '23505') {
+          const { data: existing } = await supabase
+            .from('workout_links')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('url', workout.url)
+            .single();
+          if (!existing) throw error;
+
+          const updates = {
+            title: workout.title,
+            notes: workout.notes,
+            thumbnail_url: workout.thumbnail_url,
+            source_domain: workout.source_domain,
+          };
+          const { data: updated, error: updateErr } = await supabase
+            .from('workout_links')
+            .update(updates)
+            .eq('id', existing.id)
+            .select()
+            .single();
+          if (updateErr) throw updateErr;
+
+          if (tagIds.length > 0) {
+            await supabase.from('workout_link_tags').delete().eq('workout_link_id', existing.id);
+            const links = tagIds.map((tag_id) => ({
+              workout_link_id: existing.id,
+              tag_id,
+            }));
+            await supabase.from('workout_link_tags').insert(links);
+          }
+
+          return { data: updated as WorkoutLink, wasDuplicate: true };
+        }
+        throw error;
+      }
 
       if (tagIds.length > 0) {
         const links = tagIds.map((tag_id) => ({
@@ -93,7 +141,7 @@ export function useWorkouts() {
         if (tagError) throw tagError;
       }
 
-      return data as WorkoutLink;
+      return { data: data as WorkoutLink, wasDuplicate: false };
     },
     [],
   );

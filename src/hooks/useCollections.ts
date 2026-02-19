@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { Collection, CollectionWithCount } from '../types/database';
+import { listCollectionsWithCounts, createCollection } from '../lib/collections';
+import { CollectionWithCount } from '../types/database';
 
 export function useCollections() {
   const [collections, setCollections] = useState<CollectionWithCount[]>([]);
@@ -9,31 +10,15 @@ export function useCollections() {
   const fetchCollections = useCallback(async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('collections')
-        .select('*, collection_items(count)')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-
-      const results: CollectionWithCount[] = (data ?? []).map((row: any) => {
-        const count = row.collection_items?.[0]?.count ?? 0;
-        const { collection_items: _, ...collection } = row;
-        return { ...collection, workout_count: count };
-      });
+      const results = await listCollectionsWithCounts();
       setCollections(results);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const createCollection = useCallback(async (name: string) => {
-    const { data, error } = await supabase
-      .from('collections')
-      .insert({ name })
-      .select()
-      .single();
-    if (error) throw error;
-    return data as Collection;
+  const createCollectionMutation = useCallback(async (name: string) => {
+    return createCollection(name);
   }, []);
 
   const updateCollection = useCallback(async (id: string, name: string) => {
@@ -83,7 +68,7 @@ export function useCollections() {
     collections,
     loading,
     fetchCollections,
-    createCollection,
+    createCollection: createCollectionMutation,
     updateCollection,
     deleteCollection,
     addToCollection,

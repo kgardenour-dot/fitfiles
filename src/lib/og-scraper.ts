@@ -7,6 +7,12 @@ export interface OGMetadata {
   siteName: string | null;
 }
 
+export interface UrlMetadata {
+  title: string;
+  thumbnail_url: string | null;
+  source_domain: string;
+}
+
 /**
  * Attempt to fetch Open Graph metadata from a URL.
  * Falls back gracefully — returns partial data or nulls if the fetch fails
@@ -22,11 +28,11 @@ export async function fetchOGMetadata(url: string): Promise<OGMetadata> {
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    const timeout = setTimeout(() => controller.abort(), 5000);
 
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'Fitfiles/1.0 (link preview)' },
+      headers: { 'User-Agent': 'FitLinks/1.0 (link preview)' },
     });
     clearTimeout(timeout);
 
@@ -54,14 +60,39 @@ export async function fetchOGMetadata(url: string): Promise<OGMetadata> {
     };
 
     const ogTitle = getMetaContent('og:title');
+    const twitterTitle = getMetaContent('twitter:title');
     const titleTagMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
     const titleFromTag = titleTagMatch ? titleTagMatch[1].trim() : '';
 
     return {
-      title: ogTitle ?? titleFromTag,
+      title: ogTitle ?? twitterTitle ?? titleFromTag,
       image: getMetaContent('og:image'),
       description: getMetaContent('og:description') ?? getMetaContent('description'),
       siteName: getMetaContent('og:site_name'),
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Fetch title, thumbnail, and domain from a URL.
+ * Best-effort: returns partial data or empty strings on failure.
+ */
+export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
+  const domain = extractDomain(url);
+  const fallback: UrlMetadata = {
+    title: '',
+    thumbnail_url: null,
+    source_domain: domain,
+  };
+
+  try {
+    const og = await fetchOGMetadata(url);
+    return {
+      title: og.title ?? '',
+      thumbnail_url: og.image,
+      source_domain: domain,
     };
   } catch {
     return fallback;

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   FlatList,
@@ -8,7 +8,7 @@ import {
   TextInput,
   Alert,
   RefreshControl,
-  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,6 +39,8 @@ export default function CollectionsScreen() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
+  const [creating, setCreating] = useState(false);
+  const listRef = useRef<FlatList>(null);
 
   useEffect(() => {
     fetchCollections();
@@ -51,13 +53,17 @@ export default function CollectionsScreen() {
       router.push('/upgrade');
       return;
     }
+    setCreating(true);
     try {
       await createCollection(name);
       setNewName('');
       setShowCreate(false);
-      fetchCollections();
+      await fetchCollections();
+      listRef.current?.scrollToOffset({ offset: 0, animated: true });
     } catch (err: any) {
-      Alert.alert('Error', err.message);
+      Alert.alert('Error', err?.message ?? 'Could not create collection');
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -98,10 +104,19 @@ export default function CollectionsScreen() {
             placeholder="Collection name"
             placeholderTextColor={Colors.textMuted}
             autoFocus
+            editable={!creating}
             onSubmitEditing={handleCreate}
           />
-          <TouchableOpacity onPress={handleCreate} style={styles.createBtn}>
-            <Ionicons name="checkmark-circle" size={28} color={Colors.aquaMint} />
+          <TouchableOpacity
+            onPress={handleCreate}
+            style={styles.createBtn}
+            disabled={creating || !newName.trim()}
+          >
+            {creating ? (
+              <ActivityIndicator size="small" color={Colors.aquaMint} />
+            ) : (
+              <Ionicons name="checkmark-circle" size={28} color={Colors.aquaMint} />
+            )}
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setShowCreate(false)} style={styles.createBtn}>
             <Ionicons name="close-circle" size={28} color={Colors.textMuted} />
@@ -110,24 +125,21 @@ export default function CollectionsScreen() {
       )}
 
       <FlatList
+        ref={listRef}
         data={collections}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         renderItem={({ item, index }) => {
           const iconColor = FOLDER_COLORS[index % FOLDER_COLORS.length];
           return (
-            <TouchableOpacity
-              style={styles.card}
-              onPress={() => router.push(`/collection/${item.id}`)}
-              activeOpacity={0.7}
-            >
+            <View style={styles.card}>
               <View style={[styles.cardIcon, { backgroundColor: iconColor + '20' }]}>
                 <Ionicons name="folder" size={28} color={iconColor} />
               </View>
               <View style={styles.cardContent}>
                 <Text style={styles.cardTitle}>{item.name}</Text>
                 <Text style={styles.cardCount}>
-                  {item.workout_count} workout{item.workout_count !== 1 ? 's' : ''}
+                  {item.workout_count ?? 0} workout{(item.workout_count ?? 0) === 1 ? '' : 's'}
                 </Text>
               </View>
               <TouchableOpacity
@@ -136,16 +148,26 @@ export default function CollectionsScreen() {
               >
                 <Ionicons name="trash-outline" size={20} color={Colors.textMuted} />
               </TouchableOpacity>
-            </TouchableOpacity>
+            </View>
           );
         }}
         ListEmptyComponent={
           loading ? null : (
-            <EmptyState
-              icon="folder-open-outline"
-              title="No collections yet"
-              subtitle="Create a collection to organize your workouts"
-            />
+            <View style={styles.emptyWrap}>
+              <EmptyState
+                icon="folder-open-outline"
+                title="No collections yet"
+                subtitle="Create a collection to organize your workouts"
+              />
+              <TouchableOpacity
+                style={styles.emptyCreateBtn}
+                onPress={() => setShowCreate(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="add" size={20} color="#FFFFFF" />
+                <Text style={styles.emptyCreateBtnText}>New collection</Text>
+              </TouchableOpacity>
+            </View>
           )
         }
         refreshControl={
@@ -237,8 +259,27 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   cardCount: {
-    color: Colors.textSecondary,
+    color: Colors.textMuted,
     fontSize: FontSize.sm,
     marginTop: 2,
+  },
+  emptyWrap: {
+    paddingVertical: Spacing.xl,
+    alignItems: 'center',
+  },
+  emptyCreateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.coralPulse,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+    marginTop: Spacing.lg,
+  },
+  emptyCreateBtnText: {
+    color: '#FFFFFF',
+    fontSize: FontSize.md,
+    fontWeight: '600',
   },
 });

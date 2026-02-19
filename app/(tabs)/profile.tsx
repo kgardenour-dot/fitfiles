@@ -11,7 +11,7 @@ import { ConfettiDots } from '../../src/components/ConfettiDots';
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, profile, signOut } = useAuth();
-  const { tier, isPro, limits } = useEntitlements(profile);
+  const { tier, isPro, isPlus, limits } = useEntitlements(profile);
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -35,7 +35,7 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.userInfo}>
             <Text style={styles.email}>{user?.email ?? ''}</Text>
-            <View style={[styles.badge, isPro && styles.badgePro]}>
+            <View style={[styles.badge, isPlus && styles.badgePlus, isPro && styles.badgePro]}>
               <Text style={styles.badgeText}>{tier.toUpperCase()}</Text>
             </View>
           </View>
@@ -48,13 +48,13 @@ export default function ProfileScreen() {
         <View style={styles.planRow}>
           <Text style={styles.planLabel}>Max Workouts</Text>
           <Text style={styles.planValue}>
-            {isPro ? 'Unlimited' : limits.maxWorkouts}
+            {limits.maxWorkouts === Infinity ? 'Unlimited' : limits.maxWorkouts}
           </Text>
         </View>
         <View style={[styles.planRow, { borderBottomWidth: 0 }]}>
           <Text style={styles.planLabel}>Max Collections</Text>
           <Text style={styles.planValue}>
-            {isPro ? 'Unlimited' : limits.maxCollections}
+            {limits.maxCollections === Infinity ? 'Unlimited' : limits.maxCollections}
           </Text>
         </View>
       </View>
@@ -63,7 +63,7 @@ export default function ProfileScreen() {
       {!isPro && (
         <TouchableOpacity style={styles.upgradeBtn} onPress={() => router.push('/upgrade')} activeOpacity={0.8}>
           <Ionicons name="rocket-outline" size={20} color="#FFFFFF" />
-          <Text style={styles.upgradeBtnText}>Upgrade to Pro</Text>
+          <Text style={styles.upgradeBtnText}>Upgrade Plan</Text>
         </TouchableOpacity>
       )}
 
@@ -76,7 +76,7 @@ export default function ProfileScreen() {
       {/* Logo at bottom */}
       <View style={styles.logoContainer}>
         <Image
-          source={require('../../assets/fitfiles_logo.png')}
+          source={require('../../assets/fitlinks_logo.png')}
           style={styles.bottomLogo}
           resizeMode="contain"
         />
@@ -144,6 +144,9 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     alignSelf: 'flex-start',
     marginTop: Spacing.xs,
+  },
+  badgePlus: {
+    backgroundColor: Colors.iceBlue,
   },
   badgePro: {
     backgroundColor: Colors.sunriseYellow,

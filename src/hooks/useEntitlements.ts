@@ -7,6 +7,7 @@ export function useEntitlements(profile: UserProfile | null) {
   const limits = PLAN_LIMITS[tier];
 
   const isPro = tier === 'pro';
+  const isPlus = tier === 'plus';
 
   const canSaveWorkout = useMemo(
     () => (currentCount: number) => currentCount < limits.maxWorkouts,
@@ -18,5 +19,5 @@ export function useEntitlements(profile: UserProfile | null) {
     [limits.maxCollections],
   );
 
-  return { tier, isPro, limits, canSaveWorkout, canCreateCollection };
+  return { tier, isPro, isPlus, limits, canSaveWorkout, canCreateCollection };
 }

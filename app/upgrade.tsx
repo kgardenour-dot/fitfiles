@@ -1,8 +1,9 @@
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/constants/theme';
+import { PLAN_LIMITS, PLAN_PRICING } from '../src/constants/limits';
 import { ConfettiDots } from '../src/components/ConfettiDots';
 
 export default function UpgradeScreen() {
@@ -17,39 +18,76 @@ export default function UpgradeScreen() {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.body}>
-        <Ionicons name="rocket" size={72} color={Colors.primary} />
-        <Text style={styles.title}>Upgrade to Pro</Text>
-        <Text style={styles.subtitle}>Unlock unlimited workouts and collections</Text>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        <Ionicons name="rocket" size={56} color={Colors.primary} />
+        <Text style={styles.title}>Choose Your Plan</Text>
+        <Text style={styles.subtitle}>Upgrade to save more workouts and collections</Text>
 
-        <View style={styles.features}>
-          {[
-            'Unlimited saved workouts',
-            'Unlimited collections',
-            'Priority support',
-            'Early access to new features',
-          ].map((feature) => (
-            <View key={feature} style={styles.featureRow}>
-              <Ionicons name="checkmark-circle" size={22} color={Colors.success} />
-              <Text style={styles.featureText}>{feature}</Text>
+        {/* Plus tier */}
+        <View style={styles.planCard}>
+          <View style={styles.planHeader}>
+            <Text style={styles.planName}>Plus</Text>
+            <View style={styles.planBadge}>
+              <Text style={styles.planBadgeText}>POPULAR</Text>
             </View>
-          ))}
+          </View>
+          <Text style={styles.planLimits}>
+            {PLAN_LIMITS.plus.maxWorkouts} workouts · {PLAN_LIMITS.plus.maxCollections} collections
+          </Text>
+          <View style={styles.priceRow}>
+            <Text style={styles.price}>${PLAN_PRICING.plus.monthly}/mo</Text>
+            <Text style={styles.priceDivider}>or</Text>
+            <Text style={styles.priceYearly}>${PLAN_PRICING.plus.yearly}/yr</Text>
+          </View>
+          <View style={styles.features}>
+            {['50 saved workouts', '10 collections', 'All current features'].map((f) => (
+              <View key={f} style={styles.featureRow}>
+                <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+                <Text style={styles.featureText}>{f}</Text>
+              </View>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={[styles.planBtn, styles.planBtnPlus]}
+            onPress={() => {
+              // Placeholder — will integrate RevenueCat or Stripe later
+              router.back();
+            }}
+          >
+            <Text style={styles.planBtnText}>Coming Soon</Text>
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          style={styles.upgradeBtn}
-          onPress={() => {
-            // Placeholder — will integrate RevenueCat or Stripe later
-            router.back();
-          }}
-        >
-          <Text style={styles.upgradeBtnText}>Coming Soon</Text>
-        </TouchableOpacity>
+        {/* Pro tier */}
+        <View style={[styles.planCard, styles.planCardPro]}>
+          <View style={styles.planHeader}>
+            <Text style={styles.planName}>Pro</Text>
+          </View>
+          <Text style={styles.planLimits}>Unlimited workouts · Unlimited collections</Text>
+          <Text style={styles.price}>${PLAN_PRICING.pro.yearly}/yr</Text>
+          <View style={styles.features}>
+            {['Unlimited saved workouts', 'Unlimited collections', 'Priority support', 'Early access to new features'].map((f) => (
+              <View key={f} style={styles.featureRow}>
+                <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+                <Text style={styles.featureText}>{f}</Text>
+              </View>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={[styles.planBtn, styles.planBtnPro]}
+            onPress={() => {
+              // Placeholder — will integrate RevenueCat or Stripe later
+              router.back();
+            }}
+          >
+            <Text style={styles.planBtnText}>Coming Soon</Text>
+          </TouchableOpacity>
+        </View>
 
         <Text style={styles.note}>
           Subscriptions will be available in a future update.
         </Text>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -63,49 +101,112 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
   },
-  body: {
+  scroll: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  },
+  body: {
     paddingHorizontal: Spacing.lg,
+    paddingBottom: Spacing.xl,
   },
   title: {
     color: Colors.text,
     fontSize: FontSize.xxl,
     fontWeight: '800',
     marginTop: Spacing.md,
+    textAlign: 'center',
   },
   subtitle: {
     color: Colors.textSecondary,
     fontSize: FontSize.md,
     marginTop: Spacing.xs,
     textAlign: 'center',
+    marginBottom: Spacing.xl,
+  },
+  planCard: {
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  planCardPro: {
+    borderColor: Colors.sunriseYellow + '60',
+  },
+  planHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  planName: {
+    color: Colors.text,
+    fontSize: FontSize.xl,
+    fontWeight: '700',
+  },
+  planBadge: {
+    backgroundColor: Colors.coralPulse,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+  },
+  planBadgeText: {
+    color: '#FFFFFF',
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+  },
+  planLimits: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.sm,
+    marginBottom: Spacing.sm,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: Spacing.sm,
+    marginBottom: Spacing.md,
+  },
+  price: {
+    color: Colors.aquaMint,
+    fontSize: FontSize.xl,
+    fontWeight: '800',
+  },
+  priceDivider: {
+    color: Colors.textMuted,
+    fontSize: FontSize.sm,
+  },
+  priceYearly: {
+    color: Colors.aquaMint,
+    fontSize: FontSize.lg,
+    fontWeight: '700',
   },
   features: {
-    marginTop: Spacing.xl,
-    width: '100%',
+    marginBottom: Spacing.md,
   },
   featureRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    paddingVertical: Spacing.sm,
+    paddingVertical: 4,
   },
   featureText: {
     color: Colors.text,
     fontSize: FontSize.md,
   },
-  upgradeBtn: {
-    backgroundColor: Colors.surfaceLight,
+  planBtn: {
     borderRadius: BorderRadius.md,
-    height: 52,
-    width: '100%',
+    height: 48,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: Spacing.xl,
   },
-  upgradeBtnText: {
-    color: Colors.textSecondary,
+  planBtnPlus: {
+    backgroundColor: Colors.coralPulse,
+  },
+  planBtnPro: {
+    backgroundColor: Colors.sunriseYellow,
+  },
+  planBtnText: {
+    color: '#FFFFFF',
     fontSize: FontSize.md,
     fontWeight: '700',
   },

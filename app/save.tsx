@@ -96,7 +96,7 @@ export default function SaveScreen() {
       if (!/^https?:\/\//i.test(normalizedUrl)) {
         normalizedUrl = 'https://' + normalizedUrl;
       }
-      await createWorkout(
+      const { wasDuplicate } = await createWorkout(
         {
           url: normalizedUrl,
           title: title.trim() || normalizedUrl,
@@ -108,7 +108,11 @@ export default function SaveScreen() {
         },
         [...selectedTags],
       );
-      router.back();
+      if (wasDuplicate) {
+        Alert.alert('Link updated', 'Updated your existing link.', [{ text: 'OK', onPress: () => router.back() }]);
+      } else {
+        router.back();
+      }
     } catch (err: any) {
       Alert.alert('Error', err.message);
     } finally {

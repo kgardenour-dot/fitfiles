@@ -31,7 +31,7 @@ const SORT_OPTIONS: { key: SortOption; label: string }[] = [
 
 export default function LibraryScreen() {
   const router = useRouter();
-  const { workouts, loading, fetchWorkouts } = useWorkouts();
+  const { workouts, loading, fetchWorkouts, toggleFavorite } = useWorkouts();
   const { tags, fetchTags } = useTags();
 
   const [search, setSearch] = useState('');
@@ -72,7 +72,7 @@ export default function LibraryScreen() {
       {/* Header: logo left, add button right */}
       <View style={styles.header}>
         <Image
-          source={require('../../assets/fitfiles_logo.png')}
+          source={require('../../assets/fitlinks_logo.png')}
           style={styles.headerLogo}
           resizeMode="contain"
         />
@@ -160,9 +160,9 @@ export default function LibraryScreen() {
           <WorkoutCard
             workout={item}
             onPress={() => router.push(`/workout/${item.id}`)}
-            onFavorite={() => {
-              // Optimistic toggle — will re-fetch on next load
-              const { toggleFavorite } = require('../../src/hooks/useWorkouts');
+            onFavorite={async () => {
+              await toggleFavorite(item.id, item.is_favorite);
+              reload();
             }}
           />
         )}

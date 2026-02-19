@@ -6,7 +6,7 @@ export type TagType =
   | 'format'
   | 'custom';
 
-export type PlanTier = 'free' | 'pro';
+export type PlanTier = 'free' | 'plus' | 'pro';
 
 export type EventType = 'opened' | 'done';
 
@@ -54,9 +54,18 @@ export interface Collection {
   created_at: string;
 }
 
+export interface CollectionWithCount {
+  id: string;
+  user_id: string;
+  name: string;
+  created_at: string;
+  workout_count: number;
+}
+
 export interface CollectionItem {
   collection_id: string;
   workout_link_id: string;
+  user_id: string;
 }
 
 export interface WorkoutEvent {
@@ -70,8 +79,4 @@ export interface WorkoutEvent {
 // Extended types for UI
 export interface WorkoutLinkWithTags extends WorkoutLink {
   tags: Tag[];
-}
-
-export interface CollectionWithCount extends Collection {
-  workout_count: number;
 }

@@ -56,13 +56,13 @@ export default function SignUpScreen() {
 
         {/* Logo */}
         <Image
-          source={require('../../assets/fitfiles_logo.png')}
+          source={require('../../assets/fitlinks_logo.png')}
           style={styles.logo}
           resizeMode="contain"
         />
 
         {/* Heading */}
-        <Text style={styles.title}>Join FitFiles!</Text>
+        <Text style={styles.title}>Join FitLinks!</Text>
         <Text style={styles.subtitle}>Save, tag & organize every workout</Text>
 
         {/* Form */}

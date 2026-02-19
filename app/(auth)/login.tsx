@@ -48,7 +48,7 @@ export default function LoginScreen() {
 
         {/* Logo */}
         <Image
-          source={require('../../assets/fitfiles_logo.png')}
+          source={require('../../assets/fitlinks_logo.png')}
           style={styles.logo}
           resizeMode="contain"
         />

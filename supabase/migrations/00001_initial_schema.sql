@@ -1,4 +1,4 @@
--- Fitfiles: Initial Schema Migration
+-- FitLinks: Initial Schema Migration
 -- Personal workout-link library with tags, collections, and entitlements.
 
 -- ============================================================
