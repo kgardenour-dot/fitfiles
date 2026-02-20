@@ -9,7 +9,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWorkouts, SortOption } from '../../src/hooks/useWorkouts';
@@ -48,9 +48,7 @@ export default function LibraryScreen() {
     fetchTags();
   }, [fetchTags]);
 
-  useEffect(() => {
-    reload();
-  }, [reload]);
+  useFocusEffect(reload);
 
   const handleToggleTag = (tagId: string) => {
     setSelectedTags((prev) => {
@@ -252,10 +250,10 @@ const styles = StyleSheet.create({
   },
   sortChip: {
     flex: 1,
-    backgroundColor: 'orange',
+    backgroundColor: Colors.chipBg,
     borderRadius: BorderRadius.full,
-    borderWidth: 2,
-    borderColor: 'red',
+    borderWidth: 1,
+    borderColor: Colors.border,
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.sm,
   },

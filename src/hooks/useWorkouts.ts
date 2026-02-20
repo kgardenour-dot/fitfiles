@@ -30,7 +30,9 @@ export function useWorkouts() {
       // Sort
       switch (options.sort) {
         case 'opened':
-          query = query.order('last_opened_at', { ascending: false, nullsFirst: false });
+          query = query
+            .not('last_opened_at', 'is', null)
+            .order('last_opened_at', { ascending: false });
           break;
         case 'favorites':
           query = query
