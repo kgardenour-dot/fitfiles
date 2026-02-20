@@ -24,8 +24,8 @@ import { TagType } from '../../src/types/database';
 import { ConfettiDots } from '../../src/components/ConfettiDots';
 
 const SORT_OPTIONS: { key: SortOption; label: string }[] = [
-  { key: 'recent', label: 'Recently Added' },
-  { key: 'opened', label: 'Recently Opened' },
+  { key: 'recent', label: 'Recent' },
+  { key: 'opened', label: 'Opened' },
   { key: 'favorites', label: 'Faves' },
 ];
 
@@ -253,9 +253,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.chipBg,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: Colors.inputBorder,
     paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: 12,
   },
   sortChipActive: {
     backgroundColor: Colors.aquaMint,
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
   },
   sortChipText: {
     color: Colors.textSecondary,
-    fontSize: FontSize.xs,
+    fontSize: FontSize.sm,
     textAlign: 'center',
   },
   sortChipTextActive: {
