@@ -28,6 +28,9 @@ export function Chip({ label, active = false, small = false, onPress, style }: P
           active && styles.labelActive,
           small && styles.labelSmall,
         ]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.75}
       >
         {label}
       </Text>

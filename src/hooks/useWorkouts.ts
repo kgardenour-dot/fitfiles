@@ -175,23 +175,30 @@ export function useWorkouts() {
     if (error) throw error;
   }, []);
 
-  const toggleFavorite = useCallback(async (id: string, current: boolean) => {
-    // Optimistic update so the heart flips instantly
-    setWorkouts((prev) =>
-      prev.map((w) => (w.id === id ? { ...w, is_favorite: !current } : w)),
-    );
-    const { error } = await supabase
-      .from('workout_links')
-      .update({ is_favorite: !current })
-      .eq('id', id);
-    if (error) {
-      // Revert on failure
-      setWorkouts((prev) =>
-        prev.map((w) => (w.id === id ? { ...w, is_favorite: current } : w)),
-      );
-      throw error;
-    }
-  }, []);
+  const toggleFavorite = useCallback(
+    async (id: string, current: boolean, removeOnUnfavorite = false) => {
+      if (current && removeOnUnfavorite) {
+        // Unfavoriting while in the Faves view — remove the card immediately
+        setWorkouts((prev) => prev.filter((w) => w.id !== id));
+      } else {
+        // Elsewhere — just flip the heart optimistically
+        setWorkouts((prev) =>
+          prev.map((w) => (w.id === id ? { ...w, is_favorite: !current } : w)),
+        );
+      }
+      const { error } = await supabase
+        .from('workout_links')
+        .update({ is_favorite: !current })
+        .eq('id', id);
+      if (error) {
+        setWorkouts((prev) =>
+          prev.map((w) => (w.id === id ? { ...w, is_favorite: current } : w)),
+        );
+        throw error;
+      }
+    },
+    [],
+  );
 
   const markOpened = useCallback(async (id: string) => {
     await supabase

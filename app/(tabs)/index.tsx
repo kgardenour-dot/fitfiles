@@ -114,6 +114,7 @@ export default function LibraryScreen() {
               flex: 1,
               marginRight: i < SORT_OPTIONS.length - 1 ? Spacing.sm : 0,
               alignItems: 'center',
+              paddingHorizontal: Spacing.xs,
             }}
           />
         ))}
@@ -166,8 +167,11 @@ export default function LibraryScreen() {
             workout={item}
             onPress={() => router.push(`/workout/${item.id}`)}
             onFavorite={async () => {
-              await toggleFavorite(item.id, item.is_favorite);
-              reload();
+              try {
+                await toggleFavorite(item.id, item.is_favorite, sort === 'favorites');
+              } catch {
+                reload();
+              }
             }}
           />
         )}
