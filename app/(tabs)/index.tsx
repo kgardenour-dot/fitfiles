@@ -252,10 +252,10 @@ const styles = StyleSheet.create({
   },
   sortChip: {
     flex: 1,
-    backgroundColor: Colors.chipBg,
+    backgroundColor: 'orange',
     borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.border,
+    borderWidth: 2,
+    borderColor: 'red',
     paddingVertical: Spacing.sm,
     paddingHorizontal: Spacing.sm,
   },
