@@ -1,4 +1,4 @@
-import { Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
+import { Text, StyleSheet, TouchableOpacity, ViewStyle, TextStyle } from 'react-native';
 import { Colors, Spacing, FontSize, BorderRadius } from '../constants/theme';
 
 interface Props {
@@ -7,9 +7,10 @@ interface Props {
   small?: boolean;
   onPress?: () => void;
   style?: ViewStyle;
+  labelStyle?: TextStyle;
 }
 
-export function Chip({ label, active = false, small = false, onPress, style }: Props) {
+export function Chip({ label, active = false, small = false, onPress, style, labelStyle }: Props) {
   return (
     <TouchableOpacity
       style={[
@@ -27,10 +28,9 @@ export function Chip({ label, active = false, small = false, onPress, style }: P
           styles.label,
           active && styles.labelActive,
           small && styles.labelSmall,
+          labelStyle,
         ]}
         numberOfLines={1}
-        adjustsFontSizeToFit
-        minimumFontScale={0.75}
       >
         {label}
       </Text>

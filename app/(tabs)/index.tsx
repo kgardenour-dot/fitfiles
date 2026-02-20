@@ -113,9 +113,9 @@ export default function LibraryScreen() {
             style={{
               flex: 1,
               marginRight: i < SORT_OPTIONS.length - 1 ? Spacing.sm : 0,
-              alignItems: 'center',
               paddingHorizontal: Spacing.xs,
             }}
+            labelStyle={{ textAlign: 'center', fontSize: FontSize.xs }}
           />
         ))}
       </View>
