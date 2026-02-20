@@ -104,20 +104,25 @@ export default function LibraryScreen() {
 
       {/* Sort Chips */}
       <View style={styles.sortRow}>
-        {SORT_OPTIONS.map((opt, i) => (
-          <Chip
-            key={opt.key}
-            label={opt.label}
-            active={sort === opt.key}
-            onPress={() => setSort(opt.key)}
-            style={{
-              flex: 1,
-              marginRight: i < SORT_OPTIONS.length - 1 ? Spacing.sm : 0,
-              paddingHorizontal: Spacing.xs,
-            }}
-            labelStyle={{ textAlign: 'center', fontSize: FontSize.xs }}
-          />
-        ))}
+        {SORT_OPTIONS.map((opt, i) => {
+          const active = sort === opt.key;
+          return (
+            <TouchableOpacity
+              key={opt.key}
+              style={[
+                styles.sortChip,
+                active && styles.sortChipActive,
+                i < SORT_OPTIONS.length - 1 && { marginRight: Spacing.sm },
+              ]}
+              onPress={() => setSort(opt.key)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.sortChipText, active && styles.sortChipTextActive]}>
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {/* Tag Filters */}
@@ -244,6 +249,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
+  },
+  sortChip: {
+    flex: 1,
+    backgroundColor: Colors.chipBg,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingVertical: Spacing.sm,
+    overflow: 'hidden',
+  },
+  sortChipActive: {
+    backgroundColor: Colors.aquaMint,
+    borderColor: Colors.aquaMint,
+  },
+  sortChipText: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.xs,
+    textAlign: 'center',
+  },
+  sortChipTextActive: {
+    color: Colors.background,
   },
   filterPanel: {
     paddingHorizontal: Spacing.md,
