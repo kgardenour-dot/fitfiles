@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     paddingVertical: Spacing.sm,
-    overflow: 'hidden',
+    paddingHorizontal: Spacing.sm,
   },
   sortChipActive: {
     backgroundColor: Colors.aquaMint,
