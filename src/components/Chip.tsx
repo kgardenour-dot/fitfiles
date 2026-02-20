@@ -1,4 +1,4 @@
-import { Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
 import { Colors, Spacing, FontSize, BorderRadius } from '../constants/theme';
 
 interface Props {
@@ -6,15 +6,17 @@ interface Props {
   active?: boolean;
   small?: boolean;
   onPress?: () => void;
+  style?: ViewStyle;
 }
 
-export function Chip({ label, active = false, small = false, onPress }: Props) {
+export function Chip({ label, active = false, small = false, onPress, style }: Props) {
   return (
     <TouchableOpacity
       style={[
         styles.chip,
         active && styles.chipActive,
         small && styles.chipSmall,
+        style,
       ]}
       onPress={onPress}
       activeOpacity={onPress ? 0.7 : 1}

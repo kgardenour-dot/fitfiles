@@ -103,16 +103,21 @@ export default function LibraryScreen() {
       </View>
 
       {/* Sort Chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sortRow}>
-        {SORT_OPTIONS.map((opt) => (
+      <View style={styles.sortRow}>
+        {SORT_OPTIONS.map((opt, i) => (
           <Chip
             key={opt.key}
             label={opt.label}
             active={sort === opt.key}
             onPress={() => setSort(opt.key)}
+            style={{
+              flex: 1,
+              marginRight: i < SORT_OPTIONS.length - 1 ? Spacing.sm : 0,
+              alignItems: 'center',
+            }}
           />
         ))}
-      </ScrollView>
+      </View>
 
       {/* Tag Filters */}
       {showFilters && (
@@ -232,10 +237,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceLight,
   },
   sortRow: {
+    flexDirection: 'row',
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
-    flexGrow: 0,
-    gap: Spacing.sm,
   },
   filterPanel: {
     paddingHorizontal: Spacing.md,

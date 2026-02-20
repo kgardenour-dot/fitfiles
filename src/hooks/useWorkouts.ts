@@ -176,11 +176,21 @@ export function useWorkouts() {
   }, []);
 
   const toggleFavorite = useCallback(async (id: string, current: boolean) => {
+    // Optimistic update so the heart flips instantly
+    setWorkouts((prev) =>
+      prev.map((w) => (w.id === id ? { ...w, is_favorite: !current } : w)),
+    );
     const { error } = await supabase
       .from('workout_links')
       .update({ is_favorite: !current })
       .eq('id', id);
-    if (error) throw error;
+    if (error) {
+      // Revert on failure
+      setWorkouts((prev) =>
+        prev.map((w) => (w.id === id ? { ...w, is_favorite: current } : w)),
+      );
+      throw error;
+    }
   }, []);
 
   const markOpened = useCallback(async (id: string) => {
