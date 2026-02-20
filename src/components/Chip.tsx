@@ -62,7 +62,6 @@ const styles = StyleSheet.create({
   },
   labelActive: {
     color: Colors.background,
-    fontWeight: '700',
   },
   labelSmall: {
     fontSize: FontSize.xs,
