@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   FlatList,
@@ -48,9 +49,11 @@ export default function LibraryScreen() {
     fetchTags();
   }, [fetchTags]);
 
-  useEffect(() => {
-    reload();
-  }, [reload]);
+  useFocusEffect(
+    useCallback(() => {
+      reload();
+    }, [reload]),
+  );
 
   const handleToggleTag = (tagId: string) => {
     setSelectedTags((prev) => {

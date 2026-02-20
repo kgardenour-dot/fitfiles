@@ -8,8 +8,10 @@ import { supabase } from '../src/lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Colors } from '../src/constants/theme';
 import { useShareIntake } from '../src/hooks/useShareIntake';
+import { WorkoutsProvider } from '../src/contexts/WorkoutsContext';
 import { getPendingRedirect, setPendingRedirect, clearPendingRedirect } from '../src/utils/pendingRedirect';
 import { normalizeShareUrl } from '../src/utils/url';
+import { shouldHandleLegacyShare } from '../src/utils/shareGate';
 
 function pickParam(value: unknown): string | undefined {
   if (value == null) return undefined;
@@ -31,6 +33,7 @@ export default function RootLayout() {
     fileUrl?: string;
     sharedKey?: string;
     sharedType?: string;
+    shareNonce?: string;
   }>();
   const hasStoredRedirectRef = useRef(false);
 
@@ -47,41 +50,39 @@ export default function RootLayout() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Handle legacy share deep link: fitlinks://dataUrl=<key>#<type> -> /import?sharedKey=...&sharedType=...
+  // Single owner for legacy share navigation (cold + warm). +not-found does NOT navigate for legacy shares.
   useEffect(() => {
     const handleUrl = (url: string | null) => {
       if (!url) return;
-      const parsed = normalizeShareUrl(url);
-      if (parsed?.sharedKey) {
-        router.replace({
-          pathname: '/import',
-          params: {
-            sharedKey: parsed.sharedKey,
-            ...(parsed.sharedType && { sharedType: parsed.sharedType }),
-          },
-        });
+      if (loading) return;
+
+      const norm = normalizeShareUrl(url);
+      if (!norm?.sharedKey) return;
+
+      if (!shouldHandleLegacyShare()) return;
+
+      const shareNonce = Date.now().toString();
+      const importParams = {
+        sharedKey: norm.sharedKey,
+        ...(norm.sharedType && { sharedType: norm.sharedType }),
+        shareNonce,
+      };
+
+      if (!session) {
+        setPendingRedirect({ pathname: '/import', params: importParams });
         return;
       }
-      console.log('[FitLinks] Linking url (not legacy share):', url);
+
+      console.log('[FitLinks] NAV to import', { sharedKey: norm.sharedKey, shareNonce });
+      router.replace({
+        pathname: '/import',
+        params: importParams,
+      });
     };
 
-    Linking.getInitialURL().then(handleUrl);
-    const sub = Linking.addEventListener('url', (event) => {
-      const parsed = normalizeShareUrl(event.url);
-      if (parsed?.sharedKey) {
-        router.replace({
-          pathname: '/import',
-          params: {
-            sharedKey: parsed.sharedKey,
-            ...(parsed.sharedType && { sharedType: parsed.sharedType }),
-          },
-        });
-        return;
-      }
-      console.log('[FitLinks] Linking.addEventListener(url):', event.url);
-    });
+    const sub = Linking.addEventListener('url', (event) => handleUrl(event.url));
     return () => sub.remove();
-  }, [router]);
+  }, [router, session, loading]);
 
   // Redirect based on auth state — this ensures logout always works
   useEffect(() => {
@@ -114,6 +115,7 @@ export default function RootLayout() {
         const fileUrl = pickParam(params.fileUrl);
         const sharedKey = pickParam(params.sharedKey);
         const sharedType = pickParam(params.sharedType);
+        const shareNonce = pickParam(params.shareNonce);
         const redirectParams: Record<string, string> = {};
         if (url) redirectParams.url = url;
         if (text) redirectParams.text = text;
@@ -121,11 +123,12 @@ export default function RootLayout() {
         if (fileUrl) redirectParams.fileUrl = fileUrl;
         if (sharedKey) redirectParams.sharedKey = sharedKey;
         if (sharedType) redirectParams.sharedType = sharedType;
+        if (shareNonce) redirectParams.shareNonce = shareNonce;
         setPendingRedirect({ pathname: '/import', params: redirectParams });
       }
       router.replace('/(auth)/login');
     }
-  }, [session, loading, segments, params.url, params.text, params.title, params.sourceUrl, params.sourceText, params.fileUrl, params.sharedKey, params.sharedType]);
+  }, [session, loading, segments, params.url, params.text, params.title, params.sourceUrl, params.sourceText, params.fileUrl, params.sharedKey, params.sharedType, params.shareNonce]);
 
   if (loading) {
     return (
@@ -137,7 +140,9 @@ export default function RootLayout() {
 
   return (
     <ShareIntentProvider>
-      <RootStack session={session} />
+      <WorkoutsProvider>
+        <RootStack session={session} />
+      </WorkoutsProvider>
     </ShareIntentProvider>
   );
 }

@@ -75,9 +75,79 @@ export async function fetchOGMetadata(url: string): Promise<OGMetadata> {
   }
 }
 
+const YOUTUBE_HOSTS = ['youtube.com', 'm.youtube.com', 'youtu.be'];
+
+export function extractYoutubeVideoId(urlStr: string): string | null {
+  try {
+    const u = new URL(urlStr);
+    const host = u.hostname.replace(/^www\./, '');
+
+    if (host === 'youtu.be') {
+      const id = u.pathname.slice(1).split('/')[0];
+      return id || null;
+    }
+
+    if (host === 'youtube.com' || host === 'm.youtube.com') {
+      const v = u.searchParams.get('v');
+      if (v) return v;
+      const m = u.pathname.match(/^\/embed\/([^/?]+)/);
+      if (m) return m[1];
+      const vMatch = u.pathname.match(/^\/v\/([^/?]+)/);
+      if (vMatch) return vMatch[1];
+      return null;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Canonicalize YouTube URLs to https://www.youtube.com/watch?v=<videoId>
+ * so the same video from different formats (youtu.be, m.youtube.com, embed, etc.)
+ * maps to a single stored URL and avoids duplicates.
+ */
+export function canonicalizeUrl(url: string): string {
+  const videoId = extractYoutubeVideoId(url);
+  if (videoId) return `https://www.youtube.com/watch?v=${videoId}`;
+  return url;
+}
+
+async function fetchYoutubeMetadata(url: string): Promise<UrlMetadata | null> {
+  const videoId = extractYoutubeVideoId(url);
+  if (!videoId) return null;
+
+  const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(watchUrl)}&format=json`;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+
+    const res = await fetch(oembedUrl, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'FitLinks/1.0 (link preview)' },
+    });
+    clearTimeout(timeout);
+
+    if (!res.ok) return null;
+
+    const data = await res.json() as { title?: string; thumbnail_url?: string };
+    return {
+      title: typeof data.title === 'string' ? data.title : '',
+      thumbnail_url: typeof data.thumbnail_url === 'string' ? data.thumbnail_url : null,
+      source_domain: 'youtube.com',
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Fetch title, thumbnail, and domain from a URL.
  * Best-effort: returns partial data or empty strings on failure.
+ * Uses YouTube oEmbed for youtube.com/youtu.be URLs to avoid "Google Search" titles.
  */
 export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
   const domain = extractDomain(url);
@@ -88,6 +158,19 @@ export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
   };
 
   try {
+    const hostname = (() => {
+      try {
+        return new URL(url).hostname.replace(/^www\./, '');
+      } catch {
+        return '';
+      }
+    })();
+
+    if (YOUTUBE_HOSTS.includes(hostname)) {
+      const yt = await fetchYoutubeMetadata(url);
+      if (yt && yt.title) return yt;
+    }
+
     const og = await fetchOGMetadata(url);
     return {
       title: og.title ?? '',

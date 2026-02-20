@@ -24,11 +24,12 @@ import { ConfettiDots } from '../../src/components/ConfettiDots';
 export default function WorkoutDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { toggleFavorite, markOpened, markDone, deleteWorkout } = useWorkouts();
+  const { toggleFavorite, markOpened, markDone, deleteWorkout, removeWorkoutLink } = useWorkouts();
   const { collections, fetchCollections, addToCollection, removeFromCollection } = useCollections();
 
   const [workout, setWorkout] = useState<WorkoutLinkWithTags | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [showCollections, setShowCollections] = useState(false);
   const [workoutCollectionIds, setWorkoutCollectionIds] = useState<Set<string>>(new Set());
 
@@ -95,8 +96,20 @@ export default function WorkoutDetailScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await deleteWorkout(workout.id);
-          router.back();
+          if (isDeleting) return;
+          setIsDeleting(true);
+          try {
+            await deleteWorkout(workout.id);
+            removeWorkoutLink(workout.id);
+            router.back();
+          } catch (err: any) {
+            Alert.alert(
+              'Delete Failed',
+              err?.message ?? 'Could not delete workout. Please try again.',
+            );
+          } finally {
+            setIsDeleting(false);
+          }
         },
       },
     ]);
@@ -128,7 +141,11 @@ export default function WorkoutDetailScreen() {
           <TouchableOpacity onPress={() => router.push(`/edit/${workout.id}`)}>
             <Ionicons name="pencil" size={22} color={Colors.textSecondary} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleDelete}>
+          <TouchableOpacity
+            onPress={handleDelete}
+            disabled={isDeleting}
+            style={{ opacity: isDeleting ? 0.5 : 1 }}
+          >
             <Ionicons name="trash-outline" size={22} color={Colors.accent} />
           </TouchableOpacity>
         </View>

@@ -32,6 +32,38 @@ function pickParam(value: unknown): string | undefined {
   return typeof s === 'string' && s.trim() ? s.trim() : undefined;
 }
 
+function normalizeIncomingUrl(raw: string): string {
+  try {
+    const u = new URL(raw);
+
+    // Google redirect pattern
+    if (u.hostname.includes('google.') && u.searchParams.has('q')) {
+      return u.searchParams.get('q') || raw;
+    }
+
+    // Pinterest redirect pattern
+    if (u.hostname.includes('pinterest.') && u.searchParams.has('url')) {
+      return u.searchParams.get('url') || raw;
+    }
+
+    // YouTube short link canonicalization
+    if (u.hostname.includes('youtu.be')) {
+      const id = u.pathname.split('/').filter(Boolean)[0];
+      if (id) return `https://www.youtube.com/watch?v=${id}`;
+    }
+
+    // YouTube watch normalization
+    if (u.hostname.includes('youtube.com')) {
+      const v = u.searchParams.get('v');
+      if (v) return `https://www.youtube.com/watch?v=${v}`;
+    }
+
+    return raw;
+  } catch {
+    return raw;
+  }
+}
+
 export default function ImportScreen() {
   const params = useLocalSearchParams<{
     sourceUrl?: string;
@@ -42,6 +74,7 @@ export default function ImportScreen() {
     title?: string;
     sharedKey?: string;
     sharedType?: string;
+    shareNonce?: string | string[];
   }>();
   const router = useRouter();
   const { createWorkout, workouts, fetchWorkouts } = useWorkouts();
@@ -55,11 +88,14 @@ export default function ImportScreen() {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const [selectedCollectionIds, setSelectedCollectionIds] = useState<Set<string>>(new Set());
-  const [saving, setSaving] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveCompleted, setSaveCompleted] = useState(false);
   const [upgradeShown, setUpgradeShown] = useState(false);
-  const hasLoadedSharedRef = useRef(false);
+  const [saveStatus, setSaveStatus] = useState('');
+  const saveDebugText = saveStatus; // alias for any legacy references
+  const consumedShareNonceRef = useRef<string | null>(null);
+  const saveCompletedRef = useRef(false);
   const hasUserEditedTitleRef = useRef(false);
-  const lastFetchedUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
     fetchWorkouts();
@@ -80,6 +116,7 @@ export default function ImportScreen() {
 
   // Prefill from params (share intent or deep link)
   useEffect(() => {
+    if (saveCompleted) return;
     const sourceUrl = pickParam(params.sourceUrl ?? params.url);
     const sourceText = pickParam(params.sourceText ?? params.text);
     const fileUrlParam = pickParam(params.fileUrl);
@@ -88,56 +125,68 @@ export default function ImportScreen() {
       const extracted = extractFirstUrl(sourceText);
       if (extracted) resolvedUrl = extracted;
     }
-    if (resolvedUrl) setUrl(resolvedUrl);
+    if (resolvedUrl) setUrl(normalizeIncomingUrl(resolvedUrl));
     if (fileUrlParam) setFileUrl(fileUrlParam);
     const titleVal = pickParam(params.title);
     if (titleVal) setTitle(titleVal);
-  }, [params.sourceUrl, params.url, params.sourceText, params.text, params.fileUrl, params.title]);
+  }, [saveCompleted, params.sourceUrl, params.url, params.sourceText, params.text, params.fileUrl, params.title]);
 
-  // Auto-fill title and thumbnail from URL metadata when sourceUrl is present
+  // Auto-fill title and thumbnail from URL metadata — only depends on url, runs after shared payload sets url
   useEffect(() => {
-    const raw = url.trim();
-    if (!raw) return;
+    if (!url) return;
+    if (saveCompleted) return;
+    if (hasUserEditedTitleRef.current) return;
 
-    const normalized = /^https?:\/\//i.test(raw) ? raw : 'https://' + raw;
-    hasUserEditedTitleRef.current = false;
-    lastFetchedUrlRef.current = normalized;
+    const normalized = /^https?:\/\//i.test(url.trim()) ? url.trim() : 'https://' + url.trim();
+    let cancelled = false;
 
-    fetchUrlMetadata(normalized)
-      .then((meta) => {
-        if (lastFetchedUrlRef.current !== normalized) return;
-        setTitle((prev) => {
-          if (hasUserEditedTitleRef.current || prev.trim()) return prev;
-          return meta.title || prev;
-        });
+    async function run() {
+      const meta = await fetchUrlMetadata(normalized);
+      if (cancelled) return;
+      if (!meta) return;
+      if (saveCompletedRef.current) return;
+      if (hasUserEditedTitleRef.current) return;
+
+      setTitle((prev) => (prev.trim() ? prev : meta.title || prev));
+      if (meta.thumbnail_url) {
         setThumbnailUrl(meta.thumbnail_url);
-      })
-      .catch(() => {});
+      }
+    }
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
   }, [url]);
 
-  // Load shared payload from App Group UserDefaults (iOS share extension)
+  // Load shared payload from App Group UserDefaults (iOS share extension) — consume by shareNonce only
   useEffect(() => {
+    const shareNonce = pickParam(params.shareNonce);
     const sharedKey = pickParam(params.sharedKey);
-    if (!sharedKey || hasLoadedSharedRef.current) return;
+    if (!sharedKey || !shareNonce) return;
+    if (consumedShareNonceRef.current === shareNonce) return;
+    if (saveCompleted) return;
+    if (isSaving) return;
 
-    hasLoadedSharedRef.current = true;
+    consumedShareNonceRef.current = shareNonce;
+    console.log('[FitLinks] CONSUME share', { sharedKey, shareNonce });
     const sharedType = pickParam(params.sharedType);
 
     getSharedPayload(sharedKey, sharedType).then((payload) => {
       if (!payload?.value) return;
+      if (saveCompletedRef.current) return;
 
       const val = payload.value.trim();
       if (val.startsWith('http://') || val.startsWith('https://')) {
-        setUrl(val);
+        setUrl(normalizeIncomingUrl(val));
       } else if (val.startsWith('file://')) {
         setFileUrl(val);
-        // Also show path in url field for display; user can clear if needed
         setUrl(val);
       } else {
-        // Plain text: try to extract URL, else put in notes
         const extracted = extractFirstUrl(val);
         if (extracted) {
-          setUrl(extracted);
+          setUrl(normalizeIncomingUrl(extracted));
         } else {
           setNotes((prev) => (prev ? `${prev}\n\n${val}` : val));
         }
@@ -145,13 +194,28 @@ export default function ImportScreen() {
 
       clearSharedPayload(sharedKey).catch(() => {});
     });
-  }, [params.sharedKey, params.sharedType]);
+  }, [params.sharedKey, params.sharedType, params.shareNonce, saveCompleted, isSaving]);
 
   const handlePasteSample = async () => {
     setUrl(SAMPLE_LINK);
   };
 
+  const goToLibraryNow = () => {
+    setSaveStatus('Navigating now...');
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 0);
+    });
+  };
+
   const handleSave = async () => {
+    if (isSaving) return;
+    if (!user?.id) {
+      Alert.alert('Error', 'You must be logged in to save.');
+      return;
+    }
+
     const trimmedUrl = url.trim();
     if (!trimmedUrl) {
       Alert.alert('URL required', 'Please enter a URL to save.');
@@ -164,19 +228,22 @@ export default function ImportScreen() {
       return;
     }
 
-    setSaving(true);
+    setIsSaving(true);
+    setSaveStatus('Saving workout_link...');
+    let saveSucceeded = false;
     try {
       let normalizedUrl = trimmedUrl;
       if (!/^https?:\/\//i.test(normalizedUrl)) {
         normalizedUrl = 'https://' + normalizedUrl;
       }
+      normalizedUrl = normalizeIncomingUrl(normalizedUrl);
 
-      const { data, wasDuplicate } = await createWorkout(
+      const { data } = await createWorkout(
         {
           url: normalizedUrl,
           title: title.trim() || normalizedUrl,
           source_domain: extractDomain(normalizedUrl),
-          thumbnail_url: thumbnailUrl,
+          thumbnail_url: thumbnailUrl ?? null,
           notes: notes.trim() || null,
           duration_minutes: null,
           is_favorite: false,
@@ -184,7 +251,7 @@ export default function ImportScreen() {
         [],
       );
 
-      const navigateToWorkout = () => router.replace(`/workout/${data.id}`);
+      setSaveStatus('Workout saved. Assigning collections...');
 
       // Add to selected collections (non-blocking; don't fail import)
       const ids = Array.from(selectedCollectionIds);
@@ -199,22 +266,35 @@ export default function ImportScreen() {
             .from('collection_items')
             .upsert(rows, { onConflict: 'collection_id,workout_link_id', ignoreDuplicates: true });
           if (error) throw error;
-        } catch {
-          Alert.alert(
-            wasDuplicate ? 'Link updated' : 'Saved',
-            "Your workout was saved, but we couldn't add it to the selected collections.",
-            [{ text: 'OK', onPress: navigateToWorkout }],
-          );
+        } catch (collErr: unknown) {
+          const isSupabase = collErr && typeof collErr === 'object' && 'code' in collErr;
+          const errMsg = isSupabase
+            ? `${(collErr as { code?: string; message?: string }).code ?? 'unknown'}: ${(collErr as { message?: string }).message ?? 'Unknown'}`
+            : "Your workout was saved, but we couldn't add it to the selected collections.";
+          if (__DEV__) console.warn('[Import] Collection add failed:', errMsg);
+          saveSucceeded = true;
+          setSaveCompleted(true);
+          saveCompletedRef.current = true;
+          setSaveStatus('Done. Navigating to Library...');
+          goToLibraryNow();
           return;
         }
       }
 
-      if (wasDuplicate) {
-        Alert.alert('Link updated', 'Updated your existing link.', [{ text: 'OK', onPress: navigateToWorkout }]);
-      } else {
-        navigateToWorkout();
-      }
+      saveSucceeded = true;
+      setSaveCompleted(true);
+      saveCompletedRef.current = true;
+      setSaveStatus('Done. Navigating to Library...');
+      goToLibraryNow();
+      return;
     } catch (err: unknown) {
+      const isSupabase = err && typeof err === 'object' && 'code' in err;
+      if (isSupabase) {
+        const e = err as { code?: string; message?: string; details?: unknown };
+        const details = e.details != null ? `\n\nDetails: ${JSON.stringify(e.details)}` : '';
+        Alert.alert('Supabase Error', `${e.code ?? 'unknown'}: ${e.message ?? 'Unknown error'}${details}`);
+        return;
+      }
       const message = err instanceof Error ? err.message : 'Failed to save workout link.';
       const isQuotaOrTier = /quota|limit|tier|upgrade/i.test(message);
       if (isQuotaOrTier && !upgradeShown) {
@@ -224,7 +304,10 @@ export default function ImportScreen() {
         Alert.alert('Error', message);
       }
     } finally {
-      setSaving(false);
+      if (!saveSucceeded) {
+        setIsSaving(false);
+        setSaveStatus('');
+      }
     }
   };
 
@@ -243,11 +326,11 @@ export default function ImportScreen() {
         </View>
 
         <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
-          {pickParam(params.sharedKey) && (
+          {__DEV__ && pickParam(params.sharedKey) ? (
             <Text style={styles.debugLine}>
-              Received sharedKey: {pickParam(params.sharedKey)} (type: {pickParam(params.sharedType) ?? '—'})
+              Received sharedKey: {pickParam(params.sharedKey)} (nonce: {pickParam(params.shareNonce) ?? '—'})
             </Text>
-          )}
+          ) : null}
           <Text style={styles.label}>URL (required)</Text>
           <TextInput
             style={styles.input}
@@ -315,16 +398,23 @@ export default function ImportScreen() {
           )}
 
           <TouchableOpacity
-            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+            style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
             onPress={handleSave}
-            disabled={saving}
+            disabled={isSaving}
           >
-            {saving ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+            {isSaving ? (
+              <View style={styles.saveBtnContent}>
+                <ActivityIndicator size="small" color="#FFFFFF" />
+                <Text style={styles.saveBtnText}>Saving...</Text>
+              </View>
             ) : (
               <Text style={styles.saveBtnText}>Save</Text>
             )}
           </TouchableOpacity>
+
+          {__DEV__ && saveStatus ? (
+            <Text style={{ fontSize: 12, opacity: 0.6, marginTop: Spacing.sm }}>{saveStatus}</Text>
+          ) : null}
 
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -432,6 +522,11 @@ const styles = StyleSheet.create({
   collectionCount: {
     color: Colors.textMuted,
     fontSize: FontSize.sm,
+  },
+  saveBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   saveBtn: {
     backgroundColor: Colors.coralPulse,

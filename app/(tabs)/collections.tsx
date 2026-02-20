@@ -5,6 +5,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
   TextInput,
   Alert,
   RefreshControl,
@@ -132,7 +133,10 @@ export default function CollectionsScreen() {
         renderItem={({ item, index }) => {
           const iconColor = FOLDER_COLORS[index % FOLDER_COLORS.length];
           return (
-            <View style={styles.card}>
+            <Pressable
+              style={styles.card}
+              onPress={() => router.push(`/collection/${item.id}`)}
+            >
               <View style={[styles.cardIcon, { backgroundColor: iconColor + '20' }]}>
                 <Ionicons name="folder" size={28} color={iconColor} />
               </View>
@@ -148,7 +152,7 @@ export default function CollectionsScreen() {
               >
                 <Ionicons name="trash-outline" size={20} color={Colors.textMuted} />
               </TouchableOpacity>
-            </View>
+            </Pressable>
           );
         }}
         ListEmptyComponent={

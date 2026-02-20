@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   FlatList,
@@ -51,9 +52,11 @@ export default function CollectionDetailScreen() {
     setLoading(false);
   }, [id, getCollectionWorkouts]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [fetchData]),
+  );
 
   const handleRename = async () => {
     if (!collection || !editName.trim()) return;
@@ -125,11 +128,21 @@ export default function CollectionDetailScreen() {
           </View>
         )}
         ListEmptyComponent={
-          <EmptyState
-            icon="folder-open-outline"
-            title="No workouts in this collection"
-            subtitle="Add workouts from their detail screen"
-          />
+          <View style={styles.emptyWrap}>
+            <EmptyState
+              icon="folder-open-outline"
+              title="No workouts in this collection yet"
+              subtitle="Add workouts from their detail screen or import new ones"
+            />
+            <TouchableOpacity
+              style={styles.emptyImportBtn}
+              onPress={() => router.push('/import')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.emptyImportBtnText}>Import workout</Text>
+            </TouchableOpacity>
+          </View>
         }
         refreshControl={
           <RefreshControl refreshing={loading} onRefresh={fetchData} tintColor={Colors.primary} />
@@ -184,5 +197,24 @@ const styles = StyleSheet.create({
   removeBtnText: {
     color: Colors.accent,
     fontSize: FontSize.xs,
+  },
+  emptyWrap: {
+    paddingVertical: Spacing.xl,
+    alignItems: 'center',
+  },
+  emptyImportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+    marginTop: Spacing.lg,
+  },
+  emptyImportBtnText: {
+    color: '#FFFFFF',
+    fontSize: FontSize.md,
+    fontWeight: '600',
   },
 });
