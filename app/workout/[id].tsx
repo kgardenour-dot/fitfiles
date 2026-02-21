@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +27,36 @@ export default function WorkoutDetailScreen() {
   const router = useRouter();
   const { toggleFavorite, markOpened, markDone, deleteWorkout, removeWorkoutLink } = useWorkouts();
   const { collections, fetchCollections, addToCollection, removeFromCollection } = useCollections();
+
+  const lastOpenedWriteRef = useRef<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!id) return;
+
+      if (lastOpenedWriteRef.current === id) return;
+      lastOpenedWriteRef.current = id;
+
+      (async () => {
+        try {
+          const { error } = await supabase
+            .from('workout_links')
+            .update({ last_opened_at: new Date().toISOString() })
+            .eq('id', id);
+
+          if (error) {
+            console.log('[last_opened_at] update failed', error.message);
+          }
+        } catch (e: unknown) {
+          console.log('[last_opened_at] update threw', e instanceof Error ? e.message : e);
+        }
+      })();
+
+      return () => {
+        lastOpenedWriteRef.current = null;
+      };
+    }, [id])
+  );
 
   const [workout, setWorkout] = useState<WorkoutLinkWithTags | null>(null);
   const [loading, setLoading] = useState(true);

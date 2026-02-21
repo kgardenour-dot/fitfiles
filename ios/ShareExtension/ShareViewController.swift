@@ -104,9 +104,18 @@ class ShareViewController: UIViewController {
           self.sharedText.append(item)
           // If this is the last item, save sharedText in userDefaults and redirect to host app
           if index == (content.attachments?.count)! - 1 {
+            let groupId = "group.com.banditinnovations.fitlinks"
+            let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
+            NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
+            
             let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
             userDefaults?.set(self.sharedText, forKey: self.sharedKey)
             userDefaults?.synchronize()
+            NSLog("[ShareViewController] ✅ Writing TEXT to UserDefaults")
+            NSLog("[ShareViewController] Suite: \(self.hostAppGroupIdentifier)")
+            NSLog("[ShareViewController] Key: \(self.sharedKey)")
+            NSLog("[ShareViewController] Text count: \(self.sharedText.count)")
+            NSLog("[ShareViewController] Text preview: \(String(self.sharedText.joined(separator: ", ").prefix(120)))")
             self.redirectToHostApp(type: .text)
           }
 
@@ -127,9 +136,24 @@ class ShareViewController: UIViewController {
           self.sharedWebUrl.append(WebUrl(url: item.absoluteString, meta: ""))
           // If this is the last item, save sharedText in userDefaults and redirect to host app
           if index == (content.attachments?.count)! - 1 {
+            let groupId = "group.com.banditinnovations.fitlinks"
+            let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
+            NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
+            
             let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
-            userDefaults?.set(self.toData(data: self.sharedWebUrl), forKey: self.sharedKey)
+            let data = self.toData(data: self.sharedWebUrl)
+            userDefaults?.set(data, forKey: self.sharedKey)
             userDefaults?.synchronize()
+            NSLog("[ShareViewController] ✅ Writing URL to UserDefaults")
+            NSLog("[ShareViewController] Suite: \(self.hostAppGroupIdentifier)")
+            NSLog("[ShareViewController] Key: \(self.sharedKey)")
+            NSLog("[ShareViewController] URL: \(item.absoluteString)")
+            if let data = data {
+              NSLog("[ShareViewController] Payload length: \(data.count) bytes")
+              if let jsonStr = String(data: data, encoding: .utf8) {
+                NSLog("[ShareViewController] Payload preview: \(String(jsonStr.prefix(120)))")
+              }
+            }
             self.redirectToHostApp(type: .weburl)
           }
 
@@ -162,9 +186,25 @@ class ShareViewController: UIViewController {
               WebUrl(url: results["baseURI"] as! String, meta: results["meta"] as! String))
             // If this is the last item, save sharedText in userDefaults and redirect to host app
             if index == (content.attachments?.count)! - 1 {
+              let groupId = "group.com.banditinnovations.fitlinks"
+              let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
+              NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
+              
               let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
-              userDefaults?.set(self.toData(data: self.sharedWebUrl), forKey: self.sharedKey)
+              let data = self.toData(data: self.sharedWebUrl)
+              userDefaults?.set(data, forKey: self.sharedKey)
               userDefaults?.synchronize()
+              NSLog("[ShareViewController] ✅ Writing WEBURL (preprocessing) to UserDefaults")
+              NSLog("[ShareViewController] Suite: \(self.hostAppGroupIdentifier)")
+              NSLog("[ShareViewController] Key: \(self.sharedKey)")
+              NSLog("[ShareViewController] URL: \(results["baseURI"] as! String)")
+              NSLog("[ShareViewController] Meta: \(results["meta"] as! String)")
+              if let data = data {
+                NSLog("[ShareViewController] Payload length: \(data.count) bytes")
+                if let jsonStr = String(data: data, encoding: .utf8) {
+                  NSLog("[ShareViewController] Payload preview: \(String(jsonStr.prefix(120)))")
+                }
+              }
               self.redirectToHostApp(type: .weburl)
             }
           } else {
@@ -301,9 +341,21 @@ class ShareViewController: UIViewController {
 
           // If this is the last item, save imagesData in userDefaults and redirect to host app
           if index == (content.attachments?.count)! - 1 {
+            let groupId = "group.com.banditinnovations.fitlinks"
+            let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
+            NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
+            
             let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
-            userDefaults?.set(self.toData(data: self.sharedMedia), forKey: self.sharedKey)
+            let data = self.toData(data: self.sharedMedia)
+            userDefaults?.set(data, forKey: self.sharedKey)
             userDefaults?.synchronize()
+            NSLog("[ShareViewController] ✅ Writing IMAGE to UserDefaults")
+            NSLog("[ShareViewController] Suite: \(self.hostAppGroupIdentifier)")
+            NSLog("[ShareViewController] Key: \(self.sharedKey)")
+            NSLog("[ShareViewController] Media count: \(self.sharedMedia.count)")
+            if let data = data {
+              NSLog("[ShareViewController] Payload length: \(data.count) bytes")
+            }
             self.redirectToHostApp(type: .media)
           }
         }
@@ -386,9 +438,21 @@ class ShareViewController: UIViewController {
 
           // If this is the last item, save imagesData in userDefaults and redirect to host app
           if index == (content.attachments?.count)! - 1 {
+            let groupId = "group.com.banditinnovations.fitlinks"
+            let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
+            NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
+            
             let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
-            userDefaults?.set(self.toData(data: self.sharedMedia), forKey: self.sharedKey)
+            let data = self.toData(data: self.sharedMedia)
+            userDefaults?.set(data, forKey: self.sharedKey)
             userDefaults?.synchronize()
+            NSLog("[ShareViewController] ✅ Writing VIDEO to UserDefaults")
+            NSLog("[ShareViewController] Suite: \(self.hostAppGroupIdentifier)")
+            NSLog("[ShareViewController] Key: \(self.sharedKey)")
+            NSLog("[ShareViewController] Media count: \(self.sharedMedia.count)")
+            if let data = data {
+              NSLog("[ShareViewController] Payload length: \(data.count) bytes")
+            }
             self.redirectToHostApp(type: .media)
           }
 
@@ -454,9 +518,21 @@ class ShareViewController: UIViewController {
     }
 
     if index == (content.attachments?.count)! - 1 {
+      let groupId = "group.com.banditinnovations.fitlinks"
+      let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
+      NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
+      
       let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
-      userDefaults?.set(self.toData(data: self.sharedMedia), forKey: self.sharedKey)
+      let data = self.toData(data: self.sharedMedia)
+      userDefaults?.set(data, forKey: self.sharedKey)
       userDefaults?.synchronize()
+      NSLog("[ShareViewController] ✅ Writing FILE to UserDefaults")
+      NSLog("[ShareViewController] Suite: \(self.hostAppGroupIdentifier)")
+      NSLog("[ShareViewController] Key: \(self.sharedKey)")
+      NSLog("[ShareViewController] Media count: \(self.sharedMedia.count)")
+      if let data = data {
+        NSLog("[ShareViewController] Payload length: \(data.count) bytes")
+      }
       self.redirectToHostApp(type: .file)
     }
   }

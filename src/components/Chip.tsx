@@ -5,15 +5,21 @@ interface Props {
   label: string;
   active?: boolean;
   small?: boolean;
+  highlighted?: boolean;
   onPress?: () => void;
 }
 
-export function Chip({ label, active = false, small = false, onPress }: Props) {
+export function Chip({ label, active = false, small = false, highlighted = false, onPress }: Props) {
+  const useActiveStyle = active || highlighted;
+  const labelColor = useActiveStyle
+    ? '#0B1220'
+    : 'rgba(255,255,255,0.88)';
+
   return (
     <TouchableOpacity
       style={[
         styles.chip,
-        active && styles.chipActive,
+        useActiveStyle && styles.chipActive,
         small && styles.chipSmall,
       ]}
       onPress={onPress}
@@ -23,7 +29,8 @@ export function Chip({ label, active = false, small = false, onPress }: Props) {
       <Text
         style={[
           styles.label,
-          active && styles.labelActive,
+          { color: labelColor },
+          useActiveStyle && styles.labelActive,
           small && styles.labelSmall,
         ]}
       >
@@ -41,7 +48,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
     borderWidth: 1,
     borderColor: Colors.border,
-    marginRight: Spacing.sm,
   },
   chipActive: {
     backgroundColor: Colors.aquaMint,
@@ -52,11 +58,9 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   label: {
-    color: Colors.textSecondary,
     fontSize: FontSize.sm,
   },
   labelActive: {
-    color: Colors.background,
     fontWeight: '700',
   },
   labelSmall: {

@@ -174,20 +174,29 @@ export default function ImportScreen() {
     const sharedType = pickParam(params.sharedType);
 
     getSharedPayload(sharedKey, sharedType).then((payload) => {
-      if (!payload?.value) return;
+      console.log('[FitLinks] getSharedPayload result:', payload);
+      if (!payload?.value) {
+        console.log('[FitLinks] ⚠️ No payload value returned');
+        return;
+      }
       if (saveCompletedRef.current) return;
 
       const val = payload.value.trim();
+      console.log('[FitLinks] Payload value:', val.substring(0, 120));
       if (val.startsWith('http://') || val.startsWith('https://')) {
+        console.log('[FitLinks] Setting URL from payload');
         setUrl(normalizeIncomingUrl(val));
       } else if (val.startsWith('file://')) {
+        console.log('[FitLinks] Setting file URL from payload');
         setFileUrl(val);
         setUrl(val);
       } else {
         const extracted = extractFirstUrl(val);
         if (extracted) {
+          console.log('[FitLinks] Extracted URL from text:', extracted);
           setUrl(normalizeIncomingUrl(extracted));
         } else {
+          console.log('[FitLinks] No URL found, adding to notes');
           setNotes((prev) => (prev ? `${prev}\n\n${val}` : val));
         }
       }
@@ -326,10 +335,18 @@ export default function ImportScreen() {
         </View>
 
         <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
-          {__DEV__ && pickParam(params.sharedKey) ? (
-            <Text style={styles.debugLine}>
-              Received sharedKey: {pickParam(params.sharedKey)} (nonce: {pickParam(params.shareNonce) ?? '—'})
-            </Text>
+          {__DEV__ && (pickParam(params.sharedKey) || pickParam(params.shareNonce)) ? (
+            <View style={styles.debugPanel}>
+              <Text style={styles.debugTitle}>🔍 Share Debug Info</Text>
+              <Text style={styles.debugLine}>sharedKey: {pickParam(params.sharedKey) ?? '—'}</Text>
+              <Text style={styles.debugLine}>sharedType: {pickParam(params.sharedType) ?? '—'}</Text>
+              <Text style={styles.debugLine}>shareNonce: {pickParam(params.shareNonce) ?? '—'}</Text>
+              <Text style={styles.debugLine}>sourceUrl: {pickParam(params.sourceUrl) ?? '—'}</Text>
+              <Text style={styles.debugLine}>sourceText: {pickParam(params.sourceText) ? `${String(pickParam(params.sourceText)).substring(0, 40)}...` : '—'}</Text>
+              <Text style={styles.debugLine}>fileUrl: {pickParam(params.fileUrl) ?? '—'}</Text>
+              <Text style={styles.debugLine}>Current url state: {url || '(empty)'}</Text>
+              <Text style={styles.debugLine}>Current fileUrl state: {fileUrl || '(empty)'}</Text>
+            </View>
           ) : null}
           <Text style={styles.label}>URL (required)</Text>
           <TextInput
@@ -443,11 +460,25 @@ const styles = StyleSheet.create({
   form: {
     paddingHorizontal: Spacing.md,
   },
+  debugPanel: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  debugTitle: {
+    color: Colors.aquaMint,
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    marginBottom: Spacing.sm,
+  },
   debugLine: {
     color: Colors.textMuted,
     fontSize: FontSize.sm,
-    marginBottom: Spacing.sm,
-    fontStyle: 'italic',
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   label: {
     color: Colors.textSecondary,

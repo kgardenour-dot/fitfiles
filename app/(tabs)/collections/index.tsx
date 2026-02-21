@@ -14,12 +14,12 @@ import {
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useCollections } from '../../src/hooks/useCollections';
-import { useAuth } from '../../src/hooks/useAuth';
-import { useEntitlements } from '../../src/hooks/useEntitlements';
-import { EmptyState } from '../../src/components/EmptyState';
-import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
-import { ConfettiDots } from '../../src/components/ConfettiDots';
+import { useCollections } from '../../../src/hooks/useCollections';
+import { useAuth } from '../../../src/hooks/useAuth';
+import { useEntitlements } from '../../../src/hooks/useEntitlements';
+import { EmptyState } from '../../../src/components/EmptyState';
+import { Colors, Spacing, FontSize, BorderRadius } from '../../../src/constants/theme';
+import { ConfettiDots } from '../../../src/components/ConfettiDots';
 
 const FOLDER_COLORS = [
   Colors.iceBlue,
@@ -61,8 +61,8 @@ export default function CollectionsScreen() {
       setShowCreate(false);
       await fetchCollections();
       listRef.current?.scrollToOffset({ offset: 0, animated: true });
-    } catch (err: any) {
-      Alert.alert('Error', err?.message ?? 'Could not create collection');
+    } catch (err: unknown) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Could not create collection');
     } finally {
       setCreating(false);
     }
@@ -135,7 +135,12 @@ export default function CollectionsScreen() {
           return (
             <Pressable
               style={styles.card}
-              onPress={() => router.push(`/collection/${item.id}`)}
+              onPress={() =>
+                router.push({
+                  pathname: '/collections/[id]',
+                  params: { id: item.id },
+                })
+              }
             >
               <View style={[styles.cardIcon, { backgroundColor: iconColor + '20' }]}>
                 <Ionicons name="folder" size={28} color={iconColor} />

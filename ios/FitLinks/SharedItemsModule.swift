@@ -18,13 +18,37 @@ class SharedItemsModule: NSObject {
     resolver resolve: @escaping RCTPromiseResolveBlock,
     rejecter reject: @escaping RCTPromiseRejectBlock
   ) {
+    let groupId = "group.com.banditinnovations.fitlinks"
+    let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
+    NSLog("[SharedItemsModule] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
+    
+    NSLog("[SharedItemsModule] 📖 Reading from UserDefaults")
+    NSLog("[SharedItemsModule] Suite: \(kAppGroupIdentifier)")
+    NSLog("[SharedItemsModule] Key: \(sharedKey)")
+    NSLog("[SharedItemsModule] Type hint: \(sharedType ?? "nil")")
+    
     guard let userDefaults = UserDefaults(suiteName: kAppGroupIdentifier) else {
+      NSLog("[SharedItemsModule] ❌ App group UserDefaults unavailable")
       reject("NO_APP_GROUP", "App group UserDefaults unavailable", nil)
       return
     }
     guard let obj = userDefaults.object(forKey: sharedKey) else {
+      NSLog("[SharedItemsModule] ⚠️ No payload found for key: \(sharedKey)")
       resolve(nil)
       return
+    }
+
+    NSLog("[SharedItemsModule] ✅ Payload exists")
+    if let data = obj as? Data {
+      NSLog("[SharedItemsModule] Payload type: Data, length: \(data.count) bytes")
+      if let jsonStr = String(data: data, encoding: .utf8) {
+        NSLog("[SharedItemsModule] Payload preview: \(String(jsonStr.prefix(120)))")
+      }
+    } else if let strings = obj as? [String] {
+      NSLog("[SharedItemsModule] Payload type: [String], count: \(strings.count)")
+      NSLog("[SharedItemsModule] Payload preview: \(strings.joined(separator: ", ").prefix(120))")
+    } else {
+      NSLog("[SharedItemsModule] Payload type: \(type(of: obj))")
     }
 
     let typeHint = sharedType as String?
@@ -93,12 +117,15 @@ class SharedItemsModule: NSObject {
     resolver resolve: @escaping RCTPromiseResolveBlock,
     rejecter reject: @escaping RCTPromiseRejectBlock
   ) {
+    NSLog("[SharedItemsModule] 🗑️ Clearing payload for key: \(sharedKey)")
     guard let userDefaults = UserDefaults(suiteName: kAppGroupIdentifier) else {
+      NSLog("[SharedItemsModule] ❌ App group UserDefaults unavailable")
       reject("NO_APP_GROUP", "App group UserDefaults unavailable", nil)
       return
     }
     userDefaults.removeObject(forKey: sharedKey)
     userDefaults.synchronize()
+    NSLog("[SharedItemsModule] ✅ Payload cleared")
     resolve(nil)
   }
 }

@@ -1,0 +1,180 @@
+```
+╔═══════════════════════════════════════════════════════════════════════╗
+║                  APP GROUPS TROUBLESHOOTING FLOWCHART                 ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+START: Clean build on device
+│
+├─> npx expo run:ios --device
+│
+└─> Build succeeds?
+    │
+    ├─ NO ──> Fix build errors first
+    │
+    └─ YES ──> Run: ./verify-app-groups-runtime.sh
+               │
+               └─> Check signed entitlements in .app and .appex
+                   │
+                   ├─ ❌ Missing in either target
+                   │  │
+                   │  └─> Problem: Entitlements not signed into build
+                   │      Solution:
+                   │      1. Check Xcode Signing & Capabilities
+                   │      2. Verify Team ID same for both targets
+                   │      3. Regenerate provisioning profiles
+                   │      4. Clean build and retry
+                   │      └─> GO TO START
+                   │
+                   └─ ✅ Present in both targets
+                      │
+                      └─> Test share on device while monitoring logs
+                          │
+                          └─> Check: [ShareViewController] 📦 AppGroup containerURL:
+                              │
+                              ├─ Shows "nil"
+                              │  │
+                              │  └─> Problem: Extension entitlement not active at runtime
+                              │      Cause: Provisioning profile or Team mismatch
+                              │      Solution:
+                              │      1. Open Xcode
+                              │      2. Select ShareExtension target
+                              │      3. Verify Team matches main app
+                              │      4. Delete derived data: rm -rf ~/Library/Developer/Xcode/DerivedData
+                              │      5. Clean build
+                              │      └─> GO TO START
+                              │
+                              └─ Shows "file://..."
+                                 │
+                                 ✅ Share Extension App Group works!
+                                 │
+                                 └─> Check: [SharedItemsModule] 📦 AppGroup containerURL:
+                                     │
+                                     ├─ Shows "nil"
+                                     │  │
+                                     │  └─> Problem: Host app entitlement not active at runtime
+                                     │      Cause: Provisioning profile or Team mismatch
+                                     │      Solution:
+                                     │      1. Open Xcode
+                                     │      2. Select FitLinks target
+                                     │      3. Verify Team matches extension
+                                     │      4. Delete derived data
+                                     │      5. Clean build
+                                     │      └─> GO TO START
+                                     │
+                                     └─ Shows "file://..."
+                                        │
+                                        ✅ Host App App Group works!
+                                        │
+                                        └─> Check: [SharedItemsModule] Payload result
+                                            │
+                                            ├─ "✅ Payload exists"
+                                            │  │
+                                            │  └─> ✅✅✅ APP GROUPS WORK PERFECTLY! ✅✅✅
+                                            │      │
+                                            │      └─> If app doesn't navigate correctly:
+                                            │          Problem is NOT App Groups
+                                            │          Problem is:
+                                            │          • Deeplink routing
+                                            │          • Payload parsing
+                                            │          • Navigation logic
+                                            │          │
+                                            │          Next debug step:
+                                            │          Share the payload preview logs
+                                            │          to debug routing/parsing
+                                            │
+                                            └─ "⚠️ No payload found"
+                                               │
+                                               └─> Problem: Payload not transferring
+                                                   Cause: Key mismatch or timing
+                                                   │
+                                                   Debug:
+                                                   1. Compare WRITE logs from extension
+                                                   2. Compare READ logs from host
+                                                   3. Verify keys match exactly:
+                                                      • Extension: sharedKey = "fitlinksShareKey"
+                                                      • Host: reads "fitlinksShareKey"
+                                                   4. Check containerURL paths match
+                                                      (same AppGroup UUID in both)
+                                                   │
+                                                   If paths/keys match but no payload:
+                                                   • Timing issue (app reads before write)
+                                                   • UserDefaults.synchronize() not working
+                                                   • Add delay in host read?
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║                            QUICK REFERENCE                            ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ CRITICAL LOGS TO CHECK                                              │
+├─────────────────────────────────────────────────────────────────────┤
+│ 1. [ShareViewController] 📦 AppGroup containerURL: <VALUE>          │
+│    • file://... = ✅ Extension can access App Group                │
+│    • nil = ❌ Extension cannot access App Group                    │
+│                                                                       │
+│ 2. [SharedItemsModule] 📦 AppGroup containerURL: <VALUE>            │
+│    • file://... = ✅ Host can access App Group                     │
+│    • nil = ❌ Host cannot access App Group                         │
+│                                                                       │
+│ 3. [SharedItemsModule] Payload result                               │
+│    • ✅ Payload exists = ✅ Data transferred                        │
+│    • ⚠️ No payload found = ❌ Data not transferred                 │
+└─────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ DIAGNOSIS TABLE                                                      │
+├──────────────┬──────────────┬──────────────┬────────────────────────┤
+│ Extension    │ Host App     │ Payload      │ Diagnosis              │
+│ containerURL │ containerURL │ Exists?      │                        │
+├──────────────┼──────────────┼──────────────┼────────────────────────┤
+│ file://...   │ file://...   │ YES          │ ✅ PERFECT!           │
+│              │              │              │ Issue elsewhere        │
+├──────────────┼──────────────┼──────────────┼────────────────────────┤
+│ file://...   │ file://...   │ NO           │ Key/timing mismatch    │
+│              │              │              │ Check keys & sync      │
+├──────────────┼──────────────┼──────────────┼────────────────────────┤
+│ nil          │ file://...   │ NO           │ Extension broken       │
+│              │              │              │ Fix extension profile  │
+├──────────────┼──────────────┼──────────────┼────────────────────────┤
+│ file://...   │ nil          │ NO           │ Host broken            │
+│              │              │              │ Fix host profile       │
+├──────────────┼──────────────┼──────────────┼────────────────────────┤
+│ nil          │ nil          │ NO           │ Both broken            │
+│              │              │              │ Fix Team/provisioning  │
+└──────────────┴──────────────┴──────────────┴────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────┐
+│ COMMANDS REFERENCE                                                   │
+├─────────────────────────────────────────────────────────────────────┤
+│ Clean build:                                                         │
+│   rm -rf ios/build && npx expo run:ios --device                     │
+│                                                                       │
+│ Verify entitlements:                                                 │
+│   ./verify-app-groups-runtime.sh                                    │
+│                                                                       │
+│ Monitor logs:                                                        │
+│   xcrun devicectl device observe logs | grep -E 'Share|SharedItems' │
+│                                                                       │
+│ Clean Xcode derived data:                                            │
+│   rm -rf ~/Library/Developer/Xcode/DerivedData                      │
+└─────────────────────────────────────────────────────────────────────┘
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║                      APPLE DEVELOPER PORTAL CHECK                     ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+If containerURL = nil in BOTH targets after trying everything:
+
+1. Go to: https://developer.apple.com/account/resources/identifiers/list
+2. Find your App ID (com.banditinnovations.fitlinks)
+3. Click Edit
+4. Verify "App Groups" capability is ENABLED
+5. Click "Configure" next to App Groups
+6. Verify "group.com.banditinnovations.fitlinks" is CHECKED
+7. Save changes
+8. Go to Provisioning Profiles
+9. DELETE old profiles for both app and extension
+10. Go back to Xcode
+11. Xcode will auto-generate new profiles
+12. Clean build and test again
+```

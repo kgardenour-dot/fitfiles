@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -6,26 +6,34 @@ import {
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
-  Text,
   ScrollView,
   Image,
+  Text,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWorkouts, SortOption } from '../../src/hooks/useWorkouts';
-import { useTags } from '../../src/hooks/useTags';
 import { WorkoutCard } from '../../src/components/WorkoutCard';
 import { SearchBar } from '../../src/components/SearchBar';
-import { Chip } from '../../src/components/Chip';
 import { EmptyState } from '../../src/components/EmptyState';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
-import { TAG_TYPE_LABELS } from '../../src/constants/tags';
-import { TagType } from '../../src/types/database';
 import { ConfettiDots } from '../../src/components/ConfettiDots';
+import { supabase } from '../../src/lib/supabase';
+import { WorkoutLinkWithTags } from '../../src/types/database';
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = React.useState(value);
+  React.useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(t);
+  }, [value, delayMs]);
+  return debounced;
+}
 
 const SORT_OPTIONS: { key: SortOption; label: string }[] = [
-  { key: 'recent', label: 'Recently Added' },
+  { key: 'recent', label: 'Newest' },
   { key: 'opened', label: 'Recently Opened' },
   { key: 'favorites', label: 'Faves' },
 ];
@@ -33,41 +41,58 @@ const SORT_OPTIONS: { key: SortOption; label: string }[] = [
 export default function LibraryScreen() {
   const router = useRouter();
   const { workouts, loading, fetchWorkouts, toggleFavorite } = useWorkouts();
-  const { tags, fetchTags } = useTags();
 
-  const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortOption>('recent');
-  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
-  const [showFilters, setShowFilters] = useState(false);
-  const [activeFilterType, setActiveFilterType] = useState<TagType | null>(null);
+  const debouncedQuery = useDebouncedValue(query, 250);
 
-  const reload = useCallback(() => {
-    fetchWorkouts({ search, sort, tagIds: [...selectedTags] });
-  }, [fetchWorkouts, search, sort, selectedTags]);
+  const [searchResults, setSearchResults] = useState<WorkoutLinkWithTags[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  const isSearching = debouncedQuery.trim().length > 0;
 
   useEffect(() => {
-    fetchTags();
-  }, [fetchTags]);
+    if (!isSearching) return;
+
+    let cancelled = false;
+    setSearchResults([]);
+    setSearchLoading(true);
+
+    (async () => {
+      const { data, error } = await supabase.rpc('search_workout_links', {
+        p_query: debouncedQuery.trim(),
+        p_sort: sort,
+        p_limit: 50,
+        p_offset: 0,
+      });
+
+      if (cancelled) return;
+
+      if (error) {
+        console.log('[search_workout_links] error', error.message);
+        setSearchResults([]);
+      } else {
+        setSearchResults((data ?? []) as WorkoutLinkWithTags[]);
+      }
+      setSearchLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery, sort, isSearching]);
+
+  const listData = isSearching ? searchResults : workouts;
+
+  const reload = useCallback(() => {
+    fetchWorkouts({ sort });
+  }, [fetchWorkouts, sort]);
 
   useFocusEffect(
     useCallback(() => {
       reload();
     }, [reload]),
   );
-
-  const handleToggleTag = (tagId: string) => {
-    setSelectedTags((prev) => {
-      const next = new Set(prev);
-      if (next.has(tagId)) next.delete(tagId);
-      else next.add(tagId);
-      return next;
-    });
-  };
-
-  const tagsByType = tags.reduce<Record<string, typeof tags>>((acc, tag) => {
-    (acc[tag.tag_type] ??= []).push(tag);
-    return acc;
-  }, {});
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -90,73 +115,46 @@ export default function LibraryScreen() {
 
       {/* Search */}
       <View style={styles.searchRow}>
-        <View style={{ flex: 1 }}>
-          <SearchBar value={search} onChangeText={setSearch} />
+        <View style={styles.searchBarWrap}>
+          <View style={styles.searchBarFlex}>
+            <SearchBar value={query} onChangeText={setQuery} />
+          </View>
+          {isSearching && searchLoading && (
+            <ActivityIndicator size="small" color={Colors.aquaMint} />
+          )}
         </View>
-        <TouchableOpacity
-          onPress={() => setShowFilters(!showFilters)}
-          style={[styles.filterBtn, showFilters && styles.filterBtnActive]}
-        >
-          <Ionicons
-            name="options-outline"
-            size={22}
-            color={showFilters ? Colors.aquaMint : Colors.textMuted}
-          />
-        </TouchableOpacity>
       </View>
 
       {/* Sort Chips */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.sortRow}>
-        {SORT_OPTIONS.map((opt) => (
-          <Chip
-            key={opt.key}
-            label={opt.label}
-            active={sort === opt.key}
-            onPress={() => setSort(opt.key)}
-          />
-        ))}
-      </ScrollView>
-
-      {/* Tag Filters */}
-      {showFilters && (
-        <View style={styles.filterPanel}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterTypes}>
-            {Object.entries(TAG_TYPE_LABELS).map(([type, label]) => (
-              <Chip
-                key={type}
-                label={label}
-                active={activeFilterType === type}
-                onPress={() =>
-                  setActiveFilterType(activeFilterType === type ? null : (type as TagType))
-                }
-                small
-              />
-            ))}
-          </ScrollView>
-          {activeFilterType && tagsByType[activeFilterType] && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterTags}>
-              {tagsByType[activeFilterType].map((tag) => (
-                <Chip
-                  key={tag.id}
-                  label={tag.name}
-                  active={selectedTags.has(tag.id)}
-                  onPress={() => handleToggleTag(tag.id)}
-                  small
-                />
-              ))}
-            </ScrollView>
-          )}
-          {selectedTags.size > 0 && (
-            <TouchableOpacity onPress={() => setSelectedTags(new Set())}>
-              <Text style={styles.clearFilters}>Clear filters</Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.sortRow}
+        contentContainerStyle={styles.sortRowContent}
+      >
+        {SORT_OPTIONS.map((opt) => {
+          const isSelected = sort === opt.key;
+          return (
+            <TouchableOpacity
+              key={opt.key}
+              style={[styles.sortChip, isSelected && styles.sortChipActive]}
+              onPress={() => setSort(opt.key)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[styles.sortChipLabel, isSelected && styles.sortChipLabelActive]}
+                includeFontPadding={false}
+              >
+                {opt.label}
+              </Text>
             </TouchableOpacity>
-          )}
-        </View>
-      )}
+          );
+        })}
+      </ScrollView>
 
       {/* Workout List */}
       <FlatList
-        data={workouts}
+        data={listData}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
@@ -165,18 +163,28 @@ export default function LibraryScreen() {
             onPress={() => router.push(`/workout/${item.id}`)}
             onFavorite={async () => {
               await toggleFavorite(item.id, item.is_favorite);
-              reload();
+              if (isSearching) {
+                setSearchResults((prev) =>
+                  prev.map((w) => (w.id === item.id ? { ...w, is_favorite: !w.is_favorite } : w)),
+                );
+              } else {
+                reload();
+              }
             }}
           />
         )}
         ListEmptyComponent={
-          loading ? null : (
-            <EmptyState
-              icon="barbell-outline"
-              title="No workouts saved yet"
-              subtitle="Tap + to save your first workout link"
-            />
-          )
+          (loading && !isSearching) || (isSearching && searchLoading) ? null : listData.length === 0 ? (
+            isSearching ? (
+              <EmptyState icon="search-outline" title="No results" subtitle="Try a different search term" />
+            ) : (
+              <EmptyState
+                icon="barbell-outline"
+                title="No workouts saved yet"
+                subtitle="Tap + to save your first workout link"
+              />
+            )
+          ) : null
         }
         refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={Colors.aquaMint} />}
       />
@@ -195,9 +203,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
   },
   headerLogo: {
-    width: 180,
-    height: 70,
-    marginLeft: -Spacing.sm,
+    width: 280,
+    height: 109,
+    marginLeft: -Spacing.md,
   },
   addBtn: {
     width: 40,
@@ -214,50 +222,55 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   searchRow: {
+    paddingHorizontal: Spacing.md,
+    marginTop: -2,
+  },
+  searchBarWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    marginTop: Spacing.xs,
     gap: Spacing.sm,
   },
-  filterBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: BorderRadius.md,
-    backgroundColor: Colors.inputBg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  filterBtnActive: {
-    borderColor: Colors.aquaMint,
-    backgroundColor: Colors.surfaceLight,
+  searchBarFlex: {
+    flex: 1,
   },
   sortRow: {
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.md + Spacing.xs,
     flexGrow: 0,
-    gap: Spacing.sm,
+    minHeight: 52,
   },
-  filterPanel: {
+  sortRowContent: {
+    flexDirection: 'row',
+    flexGrow: 1,
+    gap: Spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'nowrap',
+  },
+  sortChip: {
+    backgroundColor: Colors.chipBg,
+    borderColor: Colors.border,
+    borderWidth: 1,
+    borderRadius: BorderRadius.full,
     paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.md,
+    paddingVertical: Spacing.sm,
+    minHeight: 40,
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
   },
-  filterTypes: {
-    flexGrow: 0,
-    marginBottom: Spacing.sm,
-    gap: Spacing.sm,
+  sortChipActive: {
+    backgroundColor: Colors.aquaMint,
+    borderColor: Colors.aquaMint,
   },
-  filterTags: {
-    flexGrow: 0,
-    marginBottom: Spacing.sm,
-    gap: Spacing.sm,
-  },
-  clearFilters: {
-    color: Colors.coralPulse,
+  sortChipLabel: {
+    color: 'rgba(255,255,255,0.88)',
     fontSize: FontSize.sm,
     fontWeight: '600',
+  },
+  sortChipLabelActive: {
+    color: '#0B1220',
+    fontWeight: '700',
   },
   list: {
     padding: Spacing.md,
