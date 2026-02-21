@@ -111,7 +111,6 @@ export default function ImportScreen() {
   const [saveCompleted, setSaveCompleted] = useState(false);
   const [upgradeShown, setUpgradeShown] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
-  const saveDebugText = saveStatus; // alias for any legacy references
   const consumedShareNonceRef = useRef<string | null>(null);
   const saveCompletedRef = useRef(false);
   const hasUserEditedTitleRef = useRef(false);
@@ -354,19 +353,6 @@ export default function ImportScreen() {
         </View>
 
         <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
-          {__DEV__ && (pickParam(params.sharedKey) || pickParam(params.shareNonce)) ? (
-            <View style={styles.debugPanel}>
-              <Text style={styles.debugTitle}>🔍 Share Debug Info</Text>
-              <Text style={styles.debugLine}>sharedKey: {pickParam(params.sharedKey) ?? '—'}</Text>
-              <Text style={styles.debugLine}>sharedType: {pickParam(params.sharedType) ?? '—'}</Text>
-              <Text style={styles.debugLine}>shareNonce: {pickParam(params.shareNonce) ?? '—'}</Text>
-              <Text style={styles.debugLine}>sourceUrl: {pickParam(params.sourceUrl) ?? '—'}</Text>
-              <Text style={styles.debugLine}>sourceText: {pickParam(params.sourceText) ? `${String(pickParam(params.sourceText)).substring(0, 40)}...` : '—'}</Text>
-              <Text style={styles.debugLine}>fileUrl: {pickParam(params.fileUrl) ?? '—'}</Text>
-              <Text style={styles.debugLine}>Current url state: {url || '(empty)'}</Text>
-              <Text style={styles.debugLine}>Current fileUrl state: {fileUrl || '(empty)'}</Text>
-            </View>
-          ) : null}
           <Text style={styles.label}>URL (required)</Text>
           <TextInput
             style={styles.input}
@@ -448,10 +434,6 @@ export default function ImportScreen() {
             )}
           </TouchableOpacity>
 
-          {__DEV__ && saveStatus ? (
-            <Text style={{ fontSize: 12, opacity: 0.6, marginTop: Spacing.sm }}>{saveStatus}</Text>
-          ) : null}
-
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -478,26 +460,6 @@ const styles = StyleSheet.create({
   },
   form: {
     paddingHorizontal: Spacing.md,
-  },
-  debugPanel: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    marginBottom: Spacing.md,
-  },
-  debugTitle: {
-    color: Colors.aquaMint,
-    fontSize: FontSize.md,
-    fontWeight: '700',
-    marginBottom: Spacing.sm,
-  },
-  debugLine: {
-    color: Colors.textMuted,
-    fontSize: FontSize.sm,
-    marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   label: {
     color: Colors.textSecondary,
