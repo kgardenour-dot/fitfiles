@@ -13,6 +13,135 @@ export interface UrlMetadata {
   source_domain: string;
 }
 
+// ---------------------------------------------------------------------------
+// URL canonicalization helpers — clean up shared URLs before metadata fetch
+// ---------------------------------------------------------------------------
+
+/**
+ * Strip the fragment (#...) from a URL. Fragments are never sent to servers,
+ * so they can only break metadata fetching.
+ */
+function stripFragment(url: string): string {
+  try {
+    const u = new URL(url);
+    u.hash = '';
+    return u.toString();
+  } catch {
+    // Fallback: just strip everything after #
+    const idx = url.indexOf('#');
+    return idx >= 0 ? url.slice(0, idx) : url;
+  }
+}
+
+/**
+ * If the URL is a known redirect wrapper, extract the destination URL.
+ * Handles google.com/url?q=, google.com/url?url=, and share.google variants.
+ */
+function resolveRedirectUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, '');
+
+    // Google redirect wrappers: /url?q= or /url?url=
+    if (host.endsWith('google.com') || host.endsWith('.google.com') || host.includes('google.')) {
+      if (u.pathname === '/url') {
+        const target = u.searchParams.get('q') || u.searchParams.get('url');
+        if (target && /^https?:\/\//i.test(target)) return target;
+      }
+    }
+
+    return url;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * For Google Image result URLs (/imgres?imgurl=...&tbnid=...), extract
+ * the original image URL from the `imgurl` query parameter.
+ */
+function extractGoogleImageUrl(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, '');
+
+    if (host.includes('google.') && u.pathname === '/imgres') {
+      const imgurl = u.searchParams.get('imgurl');
+      if (imgurl && /^https?:\/\//i.test(imgurl)) return imgurl;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * For Google Image search URLs containing a `tbnid` parameter, derive the
+ * encrypted-tbn thumbnail URL. This is a last-resort thumbnail when OG
+ * metadata fetch fails.
+ */
+export function extractGoogleTbnThumbnail(url: string): string | null {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, '');
+
+    // Already an encrypted-tbn URL — return as-is
+    if (host.startsWith('encrypted-tbn') && host.endsWith('.gstatic.com')) {
+      return url;
+    }
+
+    if (!host.includes('google.')) return null;
+
+    // Check both search params and the fragment for tbnid
+    const tbnid = u.searchParams.get('tbnid') || extractParamFromFragment(u.hash, 'tbnid');
+    if (!tbnid) return null;
+
+    return `https://encrypted-tbn0.gstatic.com/images?q=tbn:${encodeURIComponent(tbnid)}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract a key=value param from a URL fragment string.
+ * Fragments can contain query-like params: #imgrc=abc&tbnid=xyz
+ */
+function extractParamFromFragment(hash: string, key: string): string | null {
+  if (!hash) return null;
+  const frag = hash.startsWith('#') ? hash.slice(1) : hash;
+  // Try key=value pairs separated by & or ;
+  const regex = new RegExp(`(?:^|[&;])${key}=([^&;#]+)`);
+  const m = frag.match(regex);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+/**
+ * Canonicalize a URL for metadata fetching:
+ * 1. Resolve redirect wrappers (Google /url?q=...)
+ * 2. For Google image result pages, pull the real image URL
+ * 3. Strip URL fragments
+ */
+export function canonicalizeForMetadataFetch(url: string): {
+  fetchUrl: string;
+  googleImageUrl: string | null;
+  googleTbnThumbnail: string | null;
+} {
+  // Preserve original for Google-specific extraction before stripping
+  const googleTbnThumbnail = extractGoogleTbnThumbnail(url);
+  const googleImageUrl = extractGoogleImageUrl(url);
+
+  let fetchUrl = resolveRedirectUrl(url);
+  // If we resolved a Google /imgres page to the actual image URL, use that
+  // for the fetchUrl too (so OG scraping hits the real site, not Google)
+  if (googleImageUrl) {
+    fetchUrl = googleImageUrl;
+  }
+  fetchUrl = stripFragment(fetchUrl);
+
+  return { fetchUrl, googleImageUrl, googleTbnThumbnail };
+}
+
 /**
  * Attempt to fetch Open Graph metadata from a URL.
  * Falls back gracefully — returns partial data or nulls if the fetch fails
@@ -148,6 +277,11 @@ async function fetchYoutubeMetadata(url: string): Promise<UrlMetadata | null> {
  * Fetch title, thumbnail, and domain from a URL.
  * Best-effort: returns partial data or empty strings on failure.
  * Uses YouTube oEmbed for youtube.com/youtu.be URLs to avoid "Google Search" titles.
+ *
+ * Canonicalizes the URL before fetching:
+ *  - strips fragments (#...) which are never sent to servers
+ *  - resolves Google redirect wrappers to the destination URL
+ *  - extracts Google tbnid thumbnails as a fallback image
  */
 export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
   const domain = extractDomain(url);
@@ -158,24 +292,31 @@ export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
   };
 
   try {
+    // Canonicalize: resolve redirects, strip fragments, extract Google image hints
+    const { fetchUrl, googleTbnThumbnail } = canonicalizeForMetadataFetch(url);
+
     const hostname = (() => {
       try {
-        return new URL(url).hostname.replace(/^www\./, '');
+        return new URL(fetchUrl).hostname.replace(/^www\./, '');
       } catch {
         return '';
       }
     })();
 
     if (YOUTUBE_HOSTS.includes(hostname)) {
-      const yt = await fetchYoutubeMetadata(url);
+      const yt = await fetchYoutubeMetadata(fetchUrl);
       if (yt && yt.title) return yt;
     }
 
-    const og = await fetchOGMetadata(url);
+    const og = await fetchOGMetadata(fetchUrl);
+
+    // Use Google tbn thumbnail as last-resort image if OG didn't provide one
+    const thumbnail = og.image || googleTbnThumbnail || null;
+
     return {
       title: og.title ?? '',
-      thumbnail_url: og.image,
-      source_domain: domain,
+      thumbnail_url: thumbnail,
+      source_domain: extractDomain(fetchUrl) || domain,
     };
   } catch {
     return fallback;

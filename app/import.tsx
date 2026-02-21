@@ -36,9 +36,22 @@ function normalizeIncomingUrl(raw: string): string {
   try {
     const u = new URL(raw);
 
-    // Google redirect pattern
-    if (u.hostname.includes('google.') && u.searchParams.has('q')) {
-      return u.searchParams.get('q') || raw;
+    // Google redirect wrapper: /url?q=<target> or /url?url=<target>
+    if (u.hostname.includes('google.') && u.pathname === '/url') {
+      const target = u.searchParams.get('q') || u.searchParams.get('url');
+      if (target && /^https?:\/\//i.test(target)) return target;
+    }
+
+    // Google search result with q= param (non-/url path)
+    if (u.hostname.includes('google.') && u.searchParams.has('q') && u.pathname !== '/url') {
+      const q = u.searchParams.get('q');
+      if (q && /^https?:\/\//i.test(q)) return q;
+    }
+
+    // Google image result: /imgres?imgurl=<actual image source URL>
+    if (u.hostname.includes('google.') && u.pathname === '/imgres') {
+      const imgurl = u.searchParams.get('imgurl');
+      if (imgurl && /^https?:\/\//i.test(imgurl)) return imgurl;
     }
 
     // Pinterest redirect pattern
@@ -56,6 +69,12 @@ function normalizeIncomingUrl(raw: string): string {
     if (u.hostname.includes('youtube.com')) {
       const v = u.searchParams.get('v');
       if (v) return `https://www.youtube.com/watch?v=${v}`;
+    }
+
+    // Strip fragments — they're never sent to servers and break metadata fetch
+    if (u.hash) {
+      u.hash = '';
+      return u.toString();
     }
 
     return raw;
