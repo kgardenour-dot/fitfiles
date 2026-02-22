@@ -109,6 +109,7 @@ class ShareViewController: UIViewController {
             NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
             
             let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
+            NSLog("[FL_SHARE_EXT_DIAG] write payload containerURL=\(containerURL?.absoluteString ?? "nil") sharedType=TEXT shareNonce=nil key=fitlinksShareKey")
             userDefaults?.set(self.sharedText, forKey: self.sharedKey)
             userDefaults?.synchronize()
             NSLog("[ShareViewController] ✅ Writing TEXT to UserDefaults")
@@ -142,6 +143,7 @@ class ShareViewController: UIViewController {
             
             let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
             let data = self.toData(data: self.sharedWebUrl)
+            NSLog("[FL_SHARE_EXT_DIAG] write payload containerURL=\(containerURL?.absoluteString ?? "nil") sharedType=URL shareNonce=nil key=fitlinksShareKey")
             userDefaults?.set(data, forKey: self.sharedKey)
             userDefaults?.synchronize()
             NSLog("[ShareViewController] ✅ Writing URL to UserDefaults")
@@ -154,7 +156,7 @@ class ShareViewController: UIViewController {
                 NSLog("[ShareViewController] Payload preview: \(String(jsonStr.prefix(120)))")
               }
             }
-            self.redirectToHostApp(type: .weburl)
+            self.redirectToHostApp(type: .url)
           }
 
         }
@@ -192,6 +194,7 @@ class ShareViewController: UIViewController {
               
               let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
               let data = self.toData(data: self.sharedWebUrl)
+              NSLog("[FL_SHARE_EXT_DIAG] write payload containerURL=\(containerURL?.absoluteString ?? "nil") sharedType=WEBURL shareNonce=nil key=fitlinksShareKey")
               userDefaults?.set(data, forKey: self.sharedKey)
               userDefaults?.synchronize()
               NSLog("[ShareViewController] ✅ Writing WEBURL (preprocessing) to UserDefaults")
@@ -347,6 +350,7 @@ class ShareViewController: UIViewController {
             
             let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
             let data = self.toData(data: self.sharedMedia)
+            NSLog("[FL_SHARE_EXT_DIAG] write payload containerURL=\(containerURL?.absoluteString ?? "nil") sharedType=IMAGE shareNonce=nil key=fitlinksShareKey")
             userDefaults?.set(data, forKey: self.sharedKey)
             userDefaults?.synchronize()
             NSLog("[ShareViewController] ✅ Writing IMAGE to UserDefaults")
@@ -356,7 +360,7 @@ class ShareViewController: UIViewController {
             if let data = data {
               NSLog("[ShareViewController] Payload length: \(data.count) bytes")
             }
-            self.redirectToHostApp(type: .media)
+            self.redirectToHostApp(type: .image)
           }
         }
       } catch {
@@ -444,6 +448,7 @@ class ShareViewController: UIViewController {
             
             let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
             let data = self.toData(data: self.sharedMedia)
+            NSLog("[FL_SHARE_EXT_DIAG] write payload containerURL=\(containerURL?.absoluteString ?? "nil") sharedType=VIDEO shareNonce=nil key=fitlinksShareKey")
             userDefaults?.set(data, forKey: self.sharedKey)
             userDefaults?.synchronize()
             NSLog("[ShareViewController] ✅ Writing VIDEO to UserDefaults")
@@ -453,7 +458,7 @@ class ShareViewController: UIViewController {
             if let data = data {
               NSLog("[ShareViewController] Payload length: \(data.count) bytes")
             }
-            self.redirectToHostApp(type: .media)
+            self.redirectToHostApp(type: .video)
           }
 
         }
@@ -524,6 +529,7 @@ class ShareViewController: UIViewController {
       
       let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
       let data = self.toData(data: self.sharedMedia)
+      NSLog("[FL_SHARE_EXT_DIAG] write payload containerURL=\(containerURL?.absoluteString ?? "nil") sharedType=FILE shareNonce=nil key=fitlinksShareKey")
       userDefaults?.set(data, forKey: self.sharedKey)
       userDefaults?.synchronize()
       NSLog("[ShareViewController] ✅ Writing FILE to UserDefaults")
@@ -554,7 +560,19 @@ class ShareViewController: UIViewController {
   }
 
   private func redirectToHostApp(type: RedirectType) {
-    let url = URL(string: "\(shareProtocol)://dataUrl=\(sharedKey)#\(type)")!
+    var components = URLComponents()
+    components.scheme = shareProtocol
+    components.host = "import"
+    components.queryItems = [
+      URLQueryItem(name: "shareKey", value: sharedKey),
+      URLQueryItem(name: "type", value: type.rawValue),
+    ]
+
+    guard let url = components.url else {
+      NSLog("redirectToHostApp URL build failed: scheme=\(shareProtocol) shareKey=\(sharedKey) type=\(type.rawValue)")
+      self.dismissWithError(message: "Unable to construct share deep link URL")
+      return
+    }
     var responder = self as UIResponder?
 
     while responder != nil {
@@ -573,11 +591,13 @@ class ShareViewController: UIViewController {
     extensionContext!.completeRequest(returningItems: [], completionHandler: nil)
   }
 
-  enum RedirectType {
-    case media
-    case text
-    case weburl
-    case file
+  enum RedirectType: String {
+    case text = "text"
+    case url = "url"
+    case weburl = "weburl"
+    case image = "image"
+    case video = "video"
+    case file = "file"
   }
 
   func getExtension(from url: URL, type: SharedMediaType) -> String {

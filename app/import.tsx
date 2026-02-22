@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWorkouts } from '../src/hooks/useWorkouts';
@@ -22,7 +23,6 @@ import { supabase } from '../src/lib/supabase';
 import { extractDomain, fetchUrlMetadata } from '../src/lib/og-scraper';
 import { extractFirstUrl } from '../src/utils/url';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/constants/theme';
-import { getSharedPayload, clearSharedPayload } from '../src/native/sharedItems';
 
 const SAMPLE_LINK = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
 
@@ -72,7 +72,6 @@ export default function ImportScreen() {
     text?: string;
     fileUrl?: string;
     title?: string;
-    sharedKey?: string;
     sharedType?: string;
     shareNonce?: string | string[];
   }>();
@@ -97,6 +96,37 @@ export default function ImportScreen() {
   const saveCompletedRef = useRef(false);
   const hasUserEditedTitleRef = useRef(false);
 
+  useFocusEffect(
+    useCallback(() => {
+      const shareNonce = pickParam(params.shareNonce);
+      const sharedType = pickParam(params.sharedType);
+      console.log('[FL_NAV_DIAG] import focus', {
+        ts: Date.now(),
+        params: { shareNonce, sharedType },
+      });
+
+      return () => {
+        console.log('[FL_NAV_DIAG] import blur', { ts: Date.now() });
+      };
+    }, [params.shareNonce, params.sharedType])
+  );
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log('[FL_NAV_DIAG] import still mounted after 500ms', { ts: Date.now() });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Log mount with share params
+  useEffect(() => {
+    const shareNonce = pickParam(params.shareNonce);
+    const sharedType = pickParam(params.sharedType);
+    if (shareNonce) {
+      console.log('[FL_SHARE_DIAG] Import screen mount', { shareNonce, sharedType });
+    }
+  }, []);
+
   useEffect(() => {
     fetchWorkouts();
   }, [fetchWorkouts]);
@@ -115,6 +145,7 @@ export default function ImportScreen() {
   };
 
   // Prefill from params (share intent or deep link)
+  // For legacy shares, the _layout handler has already read and cleared the App Group payload
   useEffect(() => {
     if (saveCompleted) return;
     const sourceUrl = pickParam(params.sourceUrl ?? params.url);
@@ -131,7 +162,7 @@ export default function ImportScreen() {
     if (titleVal) setTitle(titleVal);
   }, [saveCompleted, params.sourceUrl, params.url, params.sourceText, params.text, params.fileUrl, params.title]);
 
-  // Auto-fill title and thumbnail from URL metadata — only depends on url, runs after shared payload sets url
+  // Auto-fill title and thumbnail from URL metadata — only depends on url, runs after params set url
   useEffect(() => {
     if (!url) return;
     if (saveCompleted) return;
@@ -160,51 +191,6 @@ export default function ImportScreen() {
     };
   }, [url]);
 
-  // Load shared payload from App Group UserDefaults (iOS share extension) — consume by shareNonce only
-  useEffect(() => {
-    const shareNonce = pickParam(params.shareNonce);
-    const sharedKey = pickParam(params.sharedKey);
-    if (!sharedKey || !shareNonce) return;
-    if (consumedShareNonceRef.current === shareNonce) return;
-    if (saveCompleted) return;
-    if (isSaving) return;
-
-    consumedShareNonceRef.current = shareNonce;
-    console.log('[FitLinks] CONSUME share', { sharedKey, shareNonce });
-    const sharedType = pickParam(params.sharedType);
-
-    getSharedPayload(sharedKey, sharedType).then((payload) => {
-      console.log('[FitLinks] getSharedPayload result:', payload);
-      if (!payload?.value) {
-        console.log('[FitLinks] ⚠️ No payload value returned');
-        return;
-      }
-      if (saveCompletedRef.current) return;
-
-      const val = payload.value.trim();
-      console.log('[FitLinks] Payload value:', val.substring(0, 120));
-      if (val.startsWith('http://') || val.startsWith('https://')) {
-        console.log('[FitLinks] Setting URL from payload');
-        setUrl(normalizeIncomingUrl(val));
-      } else if (val.startsWith('file://')) {
-        console.log('[FitLinks] Setting file URL from payload');
-        setFileUrl(val);
-        setUrl(val);
-      } else {
-        const extracted = extractFirstUrl(val);
-        if (extracted) {
-          console.log('[FitLinks] Extracted URL from text:', extracted);
-          setUrl(normalizeIncomingUrl(extracted));
-        } else {
-          console.log('[FitLinks] No URL found, adding to notes');
-          setNotes((prev) => (prev ? `${prev}\n\n${val}` : val));
-        }
-      }
-
-      clearSharedPayload(sharedKey).catch(() => {});
-    });
-  }, [params.sharedKey, params.sharedType, params.shareNonce, saveCompleted, isSaving]);
-
   const handlePasteSample = async () => {
     setUrl(SAMPLE_LINK);
   };
@@ -213,6 +199,16 @@ export default function ImportScreen() {
     setSaveStatus('Navigating now...');
     requestAnimationFrame(() => {
       setTimeout(() => {
+        const lastShareHandledAt =
+          (globalThis as { __FL_LAST_SHARE_HANDLED_AT?: number }).__FL_LAST_SHARE_HANDLED_AT ?? 0;
+        const ageMs = Date.now() - lastShareHandledAt;
+        console.log('[FL_NAV_DIAG] redirect->library (import save success)', {
+          file: 'app/import.tsx',
+          reason: 'save_complete_go_to_tabs',
+          within2sOfShare: ageMs >= 0 && ageMs < 2000,
+          ageMsSinceShareHandled: ageMs,
+          ts: Date.now(),
+        });
         router.replace('/(tabs)');
       }, 0);
     });
@@ -335,12 +331,11 @@ export default function ImportScreen() {
         </View>
 
         <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
-          {__DEV__ && (pickParam(params.sharedKey) || pickParam(params.shareNonce)) ? (
+          {__DEV__ && pickParam(params.shareNonce) ? (
             <View style={styles.debugPanel}>
               <Text style={styles.debugTitle}>🔍 Share Debug Info</Text>
-              <Text style={styles.debugLine}>sharedKey: {pickParam(params.sharedKey) ?? '—'}</Text>
-              <Text style={styles.debugLine}>sharedType: {pickParam(params.sharedType) ?? '—'}</Text>
               <Text style={styles.debugLine}>shareNonce: {pickParam(params.shareNonce) ?? '—'}</Text>
+              <Text style={styles.debugLine}>sharedType: {pickParam(params.sharedType) ?? '—'}</Text>
               <Text style={styles.debugLine}>sourceUrl: {pickParam(params.sourceUrl) ?? '—'}</Text>
               <Text style={styles.debugLine}>sourceText: {pickParam(params.sourceText) ? `${String(pickParam(params.sourceText)).substring(0, 40)}...` : '—'}</Text>
               <Text style={styles.debugLine}>fileUrl: {pickParam(params.fileUrl) ?? '—'}</Text>
