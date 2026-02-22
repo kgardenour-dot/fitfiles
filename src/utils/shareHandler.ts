@@ -3,25 +3,31 @@
  *
  * Fixed:
  *  1. iOS cold‑start triple‑fire: `Linking.getInitialURL()` can deliver
- *     the same URL through multiple code‑paths (expo‑router deep‑link
- *     matching, the Linking event listener, and the explicit
- *     getInitialURL call).  We now track the last *routed* initial URL
- *     and skip duplicates.
+ *     the same URL through multiple code‑paths.  We track the last
+ *     *routed* URL per source and skip duplicates.
  *
  *  2. Payload consumption race: the native share‑extension module clears
- *     the payload after the first read.  If handleUrl fires again the
- *     payload is gone.  We cache the payload keyed by URL so subsequent
- *     reads still succeed.
+ *     the payload after the first read.  We cache the payload keyed by
+ *     URL so subsequent reads still succeed.
  *
  *  3. Nav‑param race: on cold start the import screen mounts before the
  *     share handler finishes, so navigation params are undefined.  We
- *     now write the payload to `shareStore` which the import screen
+ *     write the payload to `shareStore` which the import screen
  *     subscribes to, completely decoupling delivery from nav timing.
+ *
+ *  4. Warm‑start urlEvent: on warm start, expo‑router independently
+ *     routes to /import when it sees the deep link, racing the share
+ *     handler.  The handler now marks routing as "in‑flight" so the
+ *     import screen knows to wait for the store rather than bail.
+ *
+ *  5. Diagnostic logging gated behind __DEV__ via logger.ts so release
+ *     builds never leak debug info into the app UI.
  */
 
 import { Linking } from "react-native";
 import { router } from "expo-router";
 import { setSharePayload, type SharePayload } from "./shareStore";
+import { shareDiag } from "./logger";
 
 // ---------------------------------------------------------------------------
 // Native bridge (replace with your actual native module import)
@@ -47,8 +53,11 @@ async function readNativePayload(): Promise<NativeShareData> {
 // Internal state
 // ---------------------------------------------------------------------------
 
-/** The initialURL we have already routed – prevents triple‑fire. */
-let _routedInitialUrl: string | null = null;
+/**
+ * The last URL we have already routed, keyed by source.
+ * Prevents triple‑fire on cold start AND double‑fire on warm start.
+ */
+const _routedUrls = new Map<string, string>();
 
 /**
  * Cache of payloads keyed by URL.  On iOS the native module clears data
@@ -60,11 +69,20 @@ const _payloadCache = new Map<string, NativeShareData>();
 const _dedupeMap = new Map<string, number>();
 const DEDUPE_WINDOW_MS = 2_000;
 
+/**
+ * Set to `true` while handleUrl is processing.  The import screen checks
+ * this to decide whether to wait for the store vs. bail immediately.
+ */
+let _handlingInFlight = false;
+export function isShareHandlingInFlight(): boolean {
+  return _handlingInFlight;
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
-export type UrlSource = "initialURL" | "listener";
+export type UrlSource = "initialURL" | "urlEvent" | "listener";
 
 /**
  * Main entry point.  Call from both `Linking.getInitialURL()` and the
@@ -75,47 +93,53 @@ export async function handleUrl(
   source: UrlSource,
 ): Promise<void> {
   const ts = Date.now();
-  console.log("[FL_SHARE_DIAG] handleUrl fired", { url, source, ts });
+  shareDiag("handleUrl fired", { url, source, ts });
 
   // -----------------------------------------------------------------------
-  // FIX 1 – cold‑start duplicate guard
+  // FIX 1 – duplicate guard (cold‑start AND warm‑start)
   //
-  // On iOS cold start the same initialURL is delivered up to 3 times.
-  // Once we have successfully routed for a given initialURL we skip all
-  // subsequent deliveries of the same URL from the "initialURL" source.
+  // On cold start the same initialURL fires up to 3 times.  On warm start
+  // the same urlEvent can fire twice.  Once we have successfully routed
+  // for a URL from a given source we skip further deliveries.
   // -----------------------------------------------------------------------
-  if (source === "initialURL" && _routedInitialUrl === url) {
-    console.log("[FL_SHARE_DIAG] skipping duplicate initialURL", { ts, url });
+  if (_routedUrls.get(source) === url) {
+    shareDiag("skipping duplicate URL", { ts, url, source });
     return;
   }
 
+  _handlingInFlight = true;
+
+  try {
+    await _processUrl(url, source, ts);
+  } finally {
+    _handlingInFlight = false;
+  }
+}
+
+async function _processUrl(
+  url: string,
+  source: UrlSource,
+  ts: number,
+): Promise<void> {
   // -----------------------------------------------------------------------
   // Parse
   // -----------------------------------------------------------------------
   const parsed = parseShareUrl(url);
   if (!parsed) return;
 
-  const { shareKey, type: sharedType } = parsed;
-  console.log("[FL_SHARE_DIAG] handleUrl parsed", {
-    ...parsed,
-    source,
-    ts,
-  });
+  const { type: sharedType } = parsed;
+  shareDiag("handleUrl parsed", { ...parsed, source, ts });
 
   if (!parsed.isImportLink) return;
 
   // -----------------------------------------------------------------------
   // FIX 2 – payload read with cache fallback
-  //
-  // The native share module clears data after the first read.  If we
-  // already read this URL's payload we return the cached copy.
   // -----------------------------------------------------------------------
   let native: NativeShareData;
   if (_payloadCache.has(url)) {
     native = _payloadCache.get(url)!;
   } else {
     native = await readNativePayload();
-    // Only cache if we actually got something.
     if (native.url || native.text || native.file || native.image || native.video) {
       _payloadCache.set(url, native);
     }
@@ -127,32 +151,31 @@ export async function handleUrl(
   const hasImage = !!native.image;
   const hasVideo = !!native.video;
 
-  console.log("[FL_SHARE_DIAG] payload read", {
+  shareDiag("payload read", {
     hasUrl,
     hasText,
     hasFile,
     hasImage,
     hasVideo,
     sharedType,
-    shareNonce: undefined, // assigned below if we route
+    shareNonce: undefined,
     status: hasUrl || hasText || hasFile || hasImage || hasVideo ? "found" : "empty",
   });
 
   if (!hasUrl && !hasText && !hasFile && !hasImage && !hasVideo) {
-    console.log("[FL_SHARE_DIAG] not routing (empty payload)", { source, ts: Date.now() });
+    shareDiag("not routing (empty payload)", { source, ts: Date.now() });
     return;
   }
 
   // -----------------------------------------------------------------------
-  // Dedupe – prevent the same share from being saved twice within the
-  // dedupe window (e.g. if the listener and getInitialURL both fire).
+  // Dedupe
   // -----------------------------------------------------------------------
   const dedupeKey = `${url}|${sharedType}|${native.url ?? native.text ?? ""}`;
   const lastRouted = _dedupeMap.get(dedupeKey);
   const now = Date.now();
   const allowed = !lastRouted || now - lastRouted > DEDUPE_WINDOW_MS;
 
-  console.log("[FL_SHARE_DIAG] dedupe decision", {
+  shareDiag("dedupe decision", {
     allowed,
     dedupeKey,
     reason: allowed ? "ok" : "duplicate",
@@ -167,9 +190,6 @@ export async function handleUrl(
 
   // -----------------------------------------------------------------------
   // FIX 3 – write payload to the store *before* navigating
-  //
-  // The import screen subscribes to the store, so even if it mounted
-  // earlier with undefined params it will receive the payload.
   // -----------------------------------------------------------------------
   const payload: SharePayload = {
     sharedType,
@@ -183,25 +203,15 @@ export async function handleUrl(
 
   setSharePayload(payload);
 
-  console.log("[FL_SHARE_DIAG] routing to import", {
-    hasText,
-    hasUrl,
-    shareNonce,
-    sharedType,
-  });
+  shareDiag("routing to import", { hasText, hasUrl, shareNonce, sharedType });
 
-  // Navigate.  Using `replace` ensures that if expo‑router already pushed
-  // /import from the deep‑link match, we update the params in place
-  // rather than pushing a second instance.
   router.replace({
     pathname: "/import",
     params: { shareNonce, sharedType },
   });
 
-  // Mark this initialURL as routed so subsequent deliveries are skipped.
-  if (source === "initialURL") {
-    _routedInitialUrl = url;
-  }
+  // Mark as routed so subsequent deliveries of the same URL are skipped.
+  _routedUrls.set(source, url);
 }
 
 // ---------------------------------------------------------------------------
@@ -209,14 +219,12 @@ export async function handleUrl(
 // ---------------------------------------------------------------------------
 
 export function setupUrlHandling(): () => void {
-  // Handle the initial URL that launched the app (cold start).
   Linking.getInitialURL().then((url) => {
     if (url) handleUrl(url, "initialURL");
   });
 
-  // Handle URLs received while the app is in the foreground.
   const sub = Linking.addEventListener("url", ({ url }) => {
-    handleUrl(url, "listener");
+    handleUrl(url, "urlEvent");
   });
 
   return () => sub.remove();
@@ -236,9 +244,6 @@ interface ParsedShareUrl {
 
 function parseShareUrl(url: string): ParsedShareUrl | null {
   try {
-    // fitlinks://import?shareKey=abc&type=weburl
-    // We can't use `new URL()` because RN doesn't handle custom schemes
-    // consistently, so do a manual parse.
     const withoutScheme = url.replace(/^[a-z]+:\/\//, "");
     const [hostAndPath, queryString] = withoutScheme.split("?");
     const [host, ...pathParts] = hostAndPath.split("/");
@@ -253,7 +258,7 @@ function parseShareUrl(url: string): ParsedShareUrl | null {
       isImportLink: host === "import",
     };
   } catch {
-    console.warn("[FL_SHARE_DIAG] failed to parse URL", url);
+    shareDiag("failed to parse URL", url);
     return null;
   }
 }
