@@ -101,23 +101,42 @@ class ShareViewController: UIViewController {
       {
         Task { @MainActor in
 
-          self.sharedText.append(item)
-          // If this is the last item, save sharedText in userDefaults and redirect to host app
-          if index == (content.attachments?.count)! - 1 {
-            let groupId = "group.com.banditinnovations.fitlinks"
-            let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
-            NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
-            
-            let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
-            userDefaults?.set(self.sharedText, forKey: self.sharedKey)
-            userDefaults?.synchronize()
-            NSLog("[ShareViewController] ✅ Writing TEXT to UserDefaults")
-            NSLog("[ShareViewController] Suite: \(self.hostAppGroupIdentifier)")
-            NSLog("[ShareViewController] Key: \(self.sharedKey)")
-            NSLog("[ShareViewController] Text count: \(self.sharedText.count)")
-            NSLog("[ShareViewController] Text preview: \(String(self.sharedText.joined(separator: ", ").prefix(120)))")
-            self.redirectToHostApp(type: .text)
+          let trimmed = item.trimmingCharacters(in: .whitespacesAndNewlines)
+          let looksLikeUrl = trimmed.hasPrefix("http://") || trimmed.hasPrefix("https://")
+
+          // Chrome warm-start bug: sometimes sends promotional text like
+          // "Download Chrome here." instead of the actual URL. When the text
+          // doesn't contain a URL, try loading the attachment as public.url
+          // before falling back to plain text.
+          if !looksLikeUrl && !self.textContainsUrl(trimmed) && attachment.hasItemConformingToTypeIdentifier(self.urlContentType) {
+            NSLog("[ShareViewController] Text has no URL, trying urlContentType fallback")
+            Task.detached {
+              if let fallbackUrl = try? await attachment.loadItem(forTypeIdentifier: self.urlContentType) as? URL {
+                Task { @MainActor in
+                  NSLog("[ShareViewController] ✅ Recovered URL from urlContentType: \(fallbackUrl.absoluteString)")
+                  self.sharedWebUrl.append(WebUrl(url: fallbackUrl.absoluteString, meta: ""))
+                  if index == (content.attachments?.count)! - 1 {
+                    let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
+                    let data = self.toData(data: self.sharedWebUrl)
+                    userDefaults?.set(data, forKey: self.sharedKey)
+                    userDefaults?.synchronize()
+                    NSLog("[ShareViewController] ✅ Writing URL (text fallback) to UserDefaults")
+                    self.redirectToHostApp(type: .weburl)
+                  }
+                }
+              } else {
+                // URL fallback failed too — store the original text
+                Task { @MainActor in
+                  NSLog("[ShareViewController] URL fallback failed, storing original text")
+                  self.storeTextAndRedirect(content: content, text: trimmed, index: index)
+                }
+              }
+            }
+            return
           }
+
+          // Text contains a URL or is a URL itself — store normally
+          self.storeTextAndRedirect(content: content, text: item, index: index)
 
         }
       } else {
@@ -126,6 +145,26 @@ class ShareViewController: UIViewController {
           message: "Cannot load text content \(String(describing: content))")
       }
     }
+  }
+
+  /// Store text in UserDefaults and redirect to the host app.
+  private func storeTextAndRedirect(content: NSExtensionItem, text: String, index: Int) {
+    self.sharedText.append(text)
+    if index == (content.attachments?.count)! - 1 {
+      let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
+      userDefaults?.set(self.sharedText, forKey: self.sharedKey)
+      userDefaults?.synchronize()
+      NSLog("[ShareViewController] ✅ Writing TEXT to UserDefaults")
+      NSLog("[ShareViewController] Text count: \(self.sharedText.count)")
+      NSLog("[ShareViewController] Text preview: \(String(self.sharedText.joined(separator: ", ").prefix(120)))")
+      self.redirectToHostApp(type: .text)
+    }
+  }
+
+  /// Check whether a string contains an HTTP/HTTPS URL.
+  private func textContainsUrl(_ text: String) -> Bool {
+    let pattern = "https?://[^\\s]+"
+    return text.range(of: pattern, options: .regularExpression) != nil
   }
 
   private func handleUrl(content: NSExtensionItem, attachment: NSItemProvider, index: Int) async {
