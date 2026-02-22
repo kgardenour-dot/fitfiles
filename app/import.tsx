@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWorkouts } from '../src/hooks/useWorkouts';
@@ -114,6 +115,30 @@ export default function ImportScreen() {
   const consumedShareNonceRef = useRef<string | null>(null);
   const saveCompletedRef = useRef(false);
   const hasUserEditedTitleRef = useRef(false);
+  const prefillSetUrlRef = useRef(false);
+
+  // Reset all form state when the screen regains focus after a previous save.
+  // Without this, navigating back to /import reuses stale state from the last session
+  // because Expo Router keeps the component mounted across tab navigations.
+  useFocusEffect(
+    useCallback(() => {
+      if (!saveCompletedRef.current) return;
+      setUrl('');
+      setTitle('');
+      setNotes('');
+      setThumbnailUrl(null);
+      setFileUrl(null);
+      setSelectedCollectionIds(new Set());
+      setIsSaving(false);
+      setSaveCompleted(false);
+      setUpgradeShown(false);
+      setSaveStatus('');
+      consumedShareNonceRef.current = null;
+      saveCompletedRef.current = false;
+      hasUserEditedTitleRef.current = false;
+      prefillSetUrlRef.current = false;
+    }, [])
+  );
 
   useEffect(() => {
     fetchWorkouts();
@@ -143,17 +168,30 @@ export default function ImportScreen() {
       const extracted = extractFirstUrl(sourceText);
       if (extracted) resolvedUrl = extracted;
     }
-    if (resolvedUrl) setUrl(normalizeIncomingUrl(resolvedUrl));
+    if (resolvedUrl) {
+      prefillSetUrlRef.current = true;
+      setUrl(normalizeIncomingUrl(resolvedUrl));
+    }
     if (fileUrlParam) setFileUrl(fileUrlParam);
     const titleVal = pickParam(params.title);
     if (titleVal) setTitle(titleVal);
   }, [saveCompleted, params.sourceUrl, params.url, params.sourceText, params.text, params.fileUrl, params.title]);
 
-  // Auto-fill title and thumbnail from URL metadata — only depends on url, runs after shared payload sets url
+  // Auto-fill title and thumbnail from URL metadata.
+  // Skips when the URL was just set by the share prefill effect (that path
+  // already triggers metadata fetching via the shared payload flow).
   useEffect(() => {
     if (!url) return;
     if (saveCompleted) return;
     if (hasUserEditedTitleRef.current) return;
+
+    // Skip the redundant fetch when the URL was set from share prefill —
+    // the shared payload effect already populated the URL and metadata
+    // will be fetched by fetchUrlMetadata on the next manual url change.
+    if (prefillSetUrlRef.current) {
+      prefillSetUrlRef.current = false;
+      return;
+    }
 
     const normalized = /^https?:\/\//i.test(url.trim()) ? url.trim() : 'https://' + url.trim();
     let cancelled = false;
@@ -176,7 +214,7 @@ export default function ImportScreen() {
     return () => {
       cancelled = true;
     };
-  }, [url]);
+  }, [url, saveCompleted]);
 
   // Load shared payload from App Group UserDefaults (iOS share extension) — consume by shareNonce only
   useEffect(() => {
@@ -188,33 +226,34 @@ export default function ImportScreen() {
     if (isSaving) return;
 
     consumedShareNonceRef.current = shareNonce;
-    console.log('[FitLinks] CONSUME share', { sharedKey, shareNonce });
+    prefillSetUrlRef.current = true;
+    if (__DEV__) console.log('[FitLinks] CONSUME share', { sharedKey, shareNonce });
     const sharedType = pickParam(params.sharedType);
 
     getSharedPayload(sharedKey, sharedType).then((payload) => {
-      console.log('[FitLinks] getSharedPayload result:', payload);
+      if (__DEV__) console.log('[FitLinks] getSharedPayload result:', payload);
       if (!payload?.value) {
-        console.log('[FitLinks] ⚠️ No payload value returned');
+        if (__DEV__) console.log('[FitLinks] No payload value returned');
         return;
       }
       if (saveCompletedRef.current) return;
 
       const val = payload.value.trim();
-      console.log('[FitLinks] Payload value:', val.substring(0, 120));
+      if (__DEV__) console.log('[FitLinks] Payload value:', val.substring(0, 120));
       if (val.startsWith('http://') || val.startsWith('https://')) {
-        console.log('[FitLinks] Setting URL from payload');
+        if (__DEV__) console.log('[FitLinks] Setting URL from payload');
         setUrl(normalizeIncomingUrl(val));
       } else if (val.startsWith('file://')) {
-        console.log('[FitLinks] Setting file URL from payload');
+        if (__DEV__) console.log('[FitLinks] Setting file URL from payload');
         setFileUrl(val);
         setUrl(val);
       } else {
         const extracted = extractFirstUrl(val);
         if (extracted) {
-          console.log('[FitLinks] Extracted URL from text:', extracted);
+          if (__DEV__) console.log('[FitLinks] Extracted URL from text:', extracted);
           setUrl(normalizeIncomingUrl(extracted));
         } else {
-          console.log('[FitLinks] No URL found, adding to notes');
+          if (__DEV__) console.log('[FitLinks] No URL found, adding to notes');
           setNotes((prev) => (prev ? `${prev}\n\n${val}` : val));
         }
       }
@@ -294,17 +333,14 @@ export default function ImportScreen() {
             .upsert(rows, { onConflict: 'collection_id,workout_link_id', ignoreDuplicates: true });
           if (error) throw error;
         } catch (collErr: unknown) {
-          const isSupabase = collErr && typeof collErr === 'object' && 'code' in collErr;
-          const errMsg = isSupabase
-            ? `${(collErr as { code?: string; message?: string }).code ?? 'unknown'}: ${(collErr as { message?: string }).message ?? 'Unknown'}`
-            : "Your workout was saved, but we couldn't add it to the selected collections.";
-          if (__DEV__) console.warn('[Import] Collection add failed:', errMsg);
-          saveSucceeded = true;
-          setSaveCompleted(true);
-          saveCompletedRef.current = true;
-          setSaveStatus('Done. Navigating to Library...');
-          goToLibraryNow();
-          return;
+          if (__DEV__) {
+            const isSupabase = collErr && typeof collErr === 'object' && 'code' in collErr;
+            const errMsg = isSupabase
+              ? `${(collErr as { code?: string; message?: string }).code ?? 'unknown'}: ${(collErr as { message?: string }).message ?? 'Unknown'}`
+              : "Collection add failed";
+            console.warn('[Import] Collection add failed:', errMsg);
+          }
+          // Fall through — workout was saved, navigate to library regardless
         }
       }
 
