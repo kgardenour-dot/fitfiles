@@ -12,15 +12,15 @@ export default function NotFoundScreen() {
     hasRedirectedRef.current = true;
 
     Linking.getInitialURL().then((initialUrl) => {
-      if (!initialUrl) {
-        router.replace('/(tabs)');
-        return;
-      }
-      // Legacy share URL — do NOT navigate; _layout's url listener is the single owner
-      if (initialUrl.includes('dataUrl=')) {
+      // Cold-start share URL — _layout's url listener is the single owner
+      if (initialUrl?.includes('dataUrl=')) {
         return; // render "Redirecting..." only
       }
-      router.replace('/(tabs)');
+      // Warm start (initialUrl is null): likely a share URL event that
+      // triggered +not-found. Delay so _layout's URL handler can navigate
+      // to /import first. If it doesn't, fall back to Library.
+      const delay = initialUrl ? 0 : 600;
+      setTimeout(() => router.replace('/(tabs)'), delay);
     });
   }, []);
 

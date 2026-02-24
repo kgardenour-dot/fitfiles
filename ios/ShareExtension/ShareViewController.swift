@@ -41,29 +41,62 @@ class ShareViewController: UIViewController {
         return
       }
       NSLog("[ShareViewController] 📋 Attachment count: \(attachments.count)")
-      for (index, attachment) in (attachments).enumerated() {
-        NSLog("[ShareViewController] Attachment[\(index)] types: \(attachment.registeredTypeIdentifiers)")
+      for (i, att) in attachments.enumerated() {
+        NSLog("[ShareViewController] Attachment[\(i)] types: \(att.registeredTypeIdentifiers)")
+      }
+
+      // Chrome shares TWO attachments: [public.url, public.plain-text].
+      // The text is promotional ("Download Chrome here."), not the URL.
+      // When a URL attachment exists, drop text-only attachments so the
+      // URL handler fires as the "last item" and its data gets saved.
+      let hasUrlProvider = attachments.contains { att in
+        att.hasItemConformingToTypeIdentifier(urlContentType) ||
+          att.hasItemConformingToTypeIdentifier(propertyListType)
+      }
+      let filtered = hasUrlProvider
+        ? attachments.filter { att in
+          att.hasItemConformingToTypeIdentifier(imageContentType) ||
+            att.hasItemConformingToTypeIdentifier(videoContentType) ||
+            att.hasItemConformingToTypeIdentifier(vcardContentType) ||
+            att.hasItemConformingToTypeIdentifier(fileURLType) ||
+            att.hasItemConformingToTypeIdentifier(pkpassContentType) ||
+            att.hasItemConformingToTypeIdentifier(pdfContentType) ||
+            att.hasItemConformingToTypeIdentifier(propertyListType) ||
+            att.hasItemConformingToTypeIdentifier(urlContentType)
+        }
+        : attachments
+
+      if filtered.count != attachments.count {
+        NSLog("[ShareViewController] Filtered \(attachments.count) → \(filtered.count) attachments (dropped text-only)")
+      }
+
+      // Wrap the filtered list in a proxy NSExtensionItem so handlers see
+      // the correct count when checking "is this the last item?".
+      let effectiveContent = NSExtensionItem()
+      effectiveContent.attachments = filtered
+
+      for (index, attachment) in (filtered).enumerated() {
         if attachment.hasItemConformingToTypeIdentifier(imageContentType) {
-          await handleImages(content: content, attachment: attachment, index: index)
+          await handleImages(content: effectiveContent, attachment: attachment, index: index)
         } else if attachment.hasItemConformingToTypeIdentifier(videoContentType) {
-          await handleVideos(content: content, attachment: attachment, index: index)
+          await handleVideos(content: effectiveContent, attachment: attachment, index: index)
         } else if attachment.hasItemConformingToTypeIdentifier(vcardContentType) {
-          await handleVCard(content: content, attachment: attachment, index: index) 
+          await handleVCard(content: effectiveContent, attachment: attachment, index: index)
         } else if attachment.hasItemConformingToTypeIdentifier(fileURLType) {
-          await handleFiles(content: content, attachment: attachment, index: index)
+          await handleFiles(content: effectiveContent, attachment: attachment, index: index)
         } else if attachment.hasItemConformingToTypeIdentifier(pkpassContentType) {
-          await handlePkPass(content: content, attachment: attachment, index: index)
+          await handlePkPass(content: effectiveContent, attachment: attachment, index: index)
         } else if attachment.hasItemConformingToTypeIdentifier(pdfContentType) {
-          await handlePdf(content: content, attachment: attachment, index: index)
+          await handlePdf(content: effectiveContent, attachment: attachment, index: index)
         } else if attachment.hasItemConformingToTypeIdentifier(propertyListType) {
-          await handlePrepocessing(content: content, attachment: attachment, index: index)
+          await handlePrepocessing(content: effectiveContent, attachment: attachment, index: index)
         } else if attachment.hasItemConformingToTypeIdentifier(urlContentType) {
-          await handleUrl(content: content, attachment: attachment, index: index)
+          await handleUrl(content: effectiveContent, attachment: attachment, index: index)
         } else if attachment.hasItemConformingToTypeIdentifier(textContentType) {
-          await handleText(content: content, attachment: attachment, index: index)
+          await handleText(content: effectiveContent, attachment: attachment, index: index)
         } else {
-          NSLog("[ERROR] content type not handle !\(String(describing: content))")
-          dismissWithError(message: "content type not handle \(String(describing: content)))")
+          NSLog("[ERROR] content type not handle !\(String(describing: effectiveContent))")
+          dismissWithError(message: "content type not handle \(String(describing: effectiveContent)))")
         }
       }
     }
