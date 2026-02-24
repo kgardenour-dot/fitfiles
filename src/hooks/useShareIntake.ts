@@ -4,17 +4,21 @@ import { useShareIntentContext } from 'expo-share-intent';
 import { extractFirstUrl } from '../utils/url';
 
 /**
- * Normalizes share intent payload into { url?, text?, title? }.
+ * Normalizes share intent payload into { url?, text?, title?, image? }.
+ * Extracts og:image from the meta JSON when available.
  */
 function normalizePayload(shareIntent: {
   webUrl?: string | null;
   text?: string | null;
-  meta?: { title?: string } | null;
-}): { url?: string; text?: string; title?: string } {
+  meta?: { title?: string; [key: string]: unknown } | null;
+}): { url?: string; text?: string; title?: string; image?: string } {
   const url = shareIntent.webUrl?.trim() || extractFirstUrl(shareIntent.text ?? '') || undefined;
   const text = shareIntent.text?.trim() || undefined;
   const title = shareIntent.meta?.title?.trim() || undefined;
-  return { url, text, title };
+  // Extract og:image from meta (expo-share-intent parses the preprocessor JSON into meta)
+  const ogImage = (shareIntent.meta as Record<string, unknown> | null | undefined)?.['og:image'];
+  const image = typeof ogImage === 'string' && ogImage.trim() ? ogImage.trim() : undefined;
+  return { url, text, title, image };
 }
 
 /**
@@ -35,7 +39,7 @@ export function useShareIntake(session: { user?: { id?: string } } | null) {
     const isImportRoute = path.includes('/import');
     if (isImportRoute) return;
 
-    const { url, text, title } = normalizePayload(shareIntent);
+    const { url, text, title, image } = normalizePayload(shareIntent);
 
     router.push({
       pathname: '/import',
@@ -43,6 +47,7 @@ export function useShareIntake(session: { user?: { id?: string } } | null) {
         ...(url && { url }),
         ...(text && { text }),
         ...(title && { title }),
+        ...(image && { image }),
       },
     });
 

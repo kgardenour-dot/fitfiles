@@ -161,7 +161,11 @@ export async function fetchOGMetadata(url: string): Promise<OGMetadata> {
 
     const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'FitLinks/1.0 (link preview)' },
+      headers: {
+        // Use a browser-like User-Agent; many servers block non-browser UAs
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
     });
     clearTimeout(timeout);
 
@@ -313,8 +317,14 @@ export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
     // Use Google tbn thumbnail as last-resort image if OG didn't provide one
     const thumbnail = og.image || googleTbnThumbnail || null;
 
+    // Filter out generic/useless titles from search engines etc.
+    let title = og.title ?? '';
+    if (/^google\s*(search)?$/i.test(title.trim()) || /^(bing|yahoo|duckduckgo|search\s*results?)$/i.test(title.trim())) {
+      title = '';
+    }
+
     return {
-      title: og.title ?? '',
+      title,
       thumbnail_url: thumbnail,
       source_domain: extractDomain(fetchUrl) || domain,
     };

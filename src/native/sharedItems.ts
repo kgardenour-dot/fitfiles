@@ -4,6 +4,7 @@ export interface SharedPayload {
   type: string;
   value: string;
   raw?: string;
+  meta?: string;
 }
 
 const SharedItems = NativeModules.SharedItems as {

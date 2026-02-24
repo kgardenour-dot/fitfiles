@@ -26,6 +26,46 @@ import { getSharedPayload, clearSharedPayload } from '../src/native/sharedItems'
 
 const SAMPLE_LINK = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
 
+/** Titles that are generic/useless — treat as empty so we try harder. */
+const BAD_TITLE_PATTERNS = [
+  /^google\s*(search)?$/i,
+  /^bing$/i,
+  /^yahoo$/i,
+  /^duckduckgo$/i,
+  /^search\s*results?$/i,
+  /^untitled$/i,
+  /^about:blank$/i,
+  /^new\s*tab$/i,
+];
+
+function isLowQualityTitle(t: string): boolean {
+  const trimmed = t.trim();
+  if (!trimmed) return true;
+  return BAD_TITLE_PATTERNS.some((p) => p.test(trimmed));
+}
+
+/**
+ * Parse the preprocessor meta JSON from the share extension.
+ * The meta is a JSON string like: {"title":"Page Title","og:title":"OG Title","og:image":"https://..."}
+ */
+function parsePreprocessorMeta(metaJson: string | undefined | null): {
+  title: string;
+  image: string | null;
+} {
+  if (!metaJson) return { title: '', image: null };
+  try {
+    const parsed = JSON.parse(metaJson) as Record<string, string>;
+    // Prefer og:title over document.title for accuracy
+    const ogTitle = parsed['og:title'] || parsed['twitter:title'] || '';
+    const docTitle = parsed['title'] || '';
+    const title = ogTitle || docTitle;
+    const image = parsed['og:image'] || parsed['twitter:image'] || parsed['twitter:image:src'] || null;
+    return { title: isLowQualityTitle(title) ? '' : title, image };
+  } catch {
+    return { title: '', image: null };
+  }
+}
+
 function pickParam(value: unknown): string | undefined {
   if (value == null) return undefined;
   const s = Array.isArray(value) ? value[0] : value;
@@ -91,6 +131,7 @@ export default function ImportScreen() {
     text?: string;
     fileUrl?: string;
     title?: string;
+    image?: string;
     sharedKey?: string;
     sharedType?: string;
     shareNonce?: string | string[];
@@ -114,6 +155,7 @@ export default function ImportScreen() {
   const consumedShareNonceRef = useRef<string | null>(null);
   const saveCompletedRef = useRef(false);
   const hasUserEditedTitleRef = useRef(false);
+  const hasPreprocessorTitleRef = useRef(false);
 
   useEffect(() => {
     fetchWorkouts();
@@ -146,14 +188,23 @@ export default function ImportScreen() {
     if (resolvedUrl) setUrl(normalizeIncomingUrl(resolvedUrl));
     if (fileUrlParam) setFileUrl(fileUrlParam);
     const titleVal = pickParam(params.title);
-    if (titleVal) setTitle(titleVal);
-  }, [saveCompleted, params.sourceUrl, params.url, params.sourceText, params.text, params.fileUrl, params.title]);
+    if (titleVal && !isLowQualityTitle(titleVal)) {
+      setTitle(titleVal);
+      hasPreprocessorTitleRef.current = true;
+    }
+    // Image from warm-start expo-share-intent pathway
+    const imageVal = pickParam(params.image);
+    if (imageVal) setThumbnailUrl(imageVal);
+  }, [saveCompleted, params.sourceUrl, params.url, params.sourceText, params.text, params.fileUrl, params.title, params.image]);
 
-  // Auto-fill title and thumbnail from URL metadata — only depends on url, runs after shared payload sets url
+  // Auto-fill title and thumbnail from URL metadata — only depends on url, runs after shared payload sets url.
+  // Skipped when the preprocessor already provided good title + image (avoids redundant/wrong re-fetch).
   useEffect(() => {
     if (!url) return;
     if (saveCompleted) return;
     if (hasUserEditedTitleRef.current) return;
+    // If preprocessor already gave us a good title AND thumbnail, skip the network fetch entirely
+    if (hasPreprocessorTitleRef.current && thumbnailUrl) return;
 
     const normalized = /^https?:\/\//i.test(url.trim()) ? url.trim() : 'https://' + url.trim();
     let cancelled = false;
@@ -165,8 +216,15 @@ export default function ImportScreen() {
       if (saveCompletedRef.current) return;
       if (hasUserEditedTitleRef.current) return;
 
-      setTitle((prev) => (prev.trim() ? prev : meta.title || prev));
-      if (meta.thumbnail_url) {
+      // Only apply fetched title if we don't already have a good one from preprocessor
+      if (!hasPreprocessorTitleRef.current) {
+        const fetchedTitle = meta.title || '';
+        if (!isLowQualityTitle(fetchedTitle)) {
+          setTitle((prev) => (prev.trim() ? prev : fetchedTitle));
+        }
+      }
+      // Always try to fill thumbnail if we don't have one yet
+      if (meta.thumbnail_url && !thumbnailUrl) {
         setThumbnailUrl(meta.thumbnail_url);
       }
     }
@@ -201,6 +259,19 @@ export default function ImportScreen() {
 
       const val = payload.value.trim();
       console.log('[FitLinks] Payload value:', val.substring(0, 120));
+
+      // Extract preprocessor meta (title, og:image) from the share extension
+      const preprocessor = parsePreprocessorMeta(payload.meta);
+      if (preprocessor.title) {
+        console.log('[FitLinks] Setting title from preprocessor:', preprocessor.title);
+        setTitle(preprocessor.title);
+        hasPreprocessorTitleRef.current = true;
+      }
+      if (preprocessor.image) {
+        console.log('[FitLinks] Setting thumbnail from preprocessor:', preprocessor.image);
+        setThumbnailUrl(preprocessor.image);
+      }
+
       if (val.startsWith('http://') || val.startsWith('https://')) {
         console.log('[FitLinks] Setting URL from payload');
         setUrl(normalizeIncomingUrl(val));

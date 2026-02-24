@@ -96,7 +96,7 @@ class ShareViewController: UIViewController {
 
   private func handleText(content: NSExtensionItem, attachment: NSItemProvider, index: Int) async {
     Task.detached {
-      if let item = try! await attachment.loadItem(forTypeIdentifier: self.textContentType)
+      if let item = try? await attachment.loadItem(forTypeIdentifier: self.textContentType)
         as? String
       {
         Task { @MainActor in
@@ -130,7 +130,7 @@ class ShareViewController: UIViewController {
 
   private func handleUrl(content: NSExtensionItem, attachment: NSItemProvider, index: Int) async {
     Task.detached {
-      if let item = try! await attachment.loadItem(forTypeIdentifier: self.urlContentType) as? URL {
+      if let item = try? await attachment.loadItem(forTypeIdentifier: self.urlContentType) as? URL {
         Task { @MainActor in
 
           self.sharedWebUrl.append(WebUrl(url: item.absoluteString, meta: ""))
@@ -170,7 +170,7 @@ class ShareViewController: UIViewController {
     async
   {
     Task.detached {
-      if let item = try! await attachment.loadItem(
+      if let item = try? await attachment.loadItem(
         forTypeIdentifier: self.propertyListType, options: nil)
         as? NSDictionary
       {
@@ -182,8 +182,10 @@ class ShareViewController: UIViewController {
             NSLog(
               "[DEBUG] NSExtensionJavaScriptPreprocessingResultsKey \(String(describing: results))"
             )
+            let baseURI = results["baseURI"] as? String ?? ""
+            let meta = results["meta"] as? String ?? ""
             self.sharedWebUrl.append(
-              WebUrl(url: results["baseURI"] as! String, meta: results["meta"] as! String))
+              WebUrl(url: baseURI, meta: meta))
             // If this is the last item, save sharedText in userDefaults and redirect to host app
             if index == (content.attachments?.count)! - 1 {
               let groupId = "group.com.banditinnovations.fitlinks"
@@ -197,8 +199,8 @@ class ShareViewController: UIViewController {
               NSLog("[ShareViewController] ✅ Writing WEBURL (preprocessing) to UserDefaults")
               NSLog("[ShareViewController] Suite: \(self.hostAppGroupIdentifier)")
               NSLog("[ShareViewController] Key: \(self.sharedKey)")
-              NSLog("[ShareViewController] URL: \(results["baseURI"] as! String)")
-              NSLog("[ShareViewController] Meta: \(results["meta"] as! String)")
+              NSLog("[ShareViewController] URL: \(baseURI)")
+              NSLog("[ShareViewController] Meta: \(meta)")
               if let data = data {
                 NSLog("[ShareViewController] Payload length: \(data.count) bytes")
                 if let jsonStr = String(data: data, encoding: .utf8) {

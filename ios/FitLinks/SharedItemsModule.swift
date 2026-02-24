@@ -95,11 +95,21 @@ class SharedItemsModule: NSObject {
     // JSON is an array of objects
     if let arr = json as? [[String: Any]], let first = arr.first {
       if let url = first["url"] as? String, url.hasPrefix("http") {
-        completion(["type": "weburl", "value": url])
+        var result: [String: Any] = ["type": "weburl", "value": url]
+        // Pass through preprocessor meta (contains page title, OG tags, og:image, etc.)
+        if let meta = first["meta"] as? String, !meta.isEmpty {
+          result["meta"] = meta
+          NSLog("[SharedItemsModule] Including meta from preprocessor (\(meta.prefix(80))...)")
+        }
+        completion(result)
         return
       }
       if let webUrl = first["webUrl"] as? String, webUrl.hasPrefix("http") {
-        completion(["type": "weburl", "value": webUrl])
+        var result: [String: Any] = ["type": "weburl", "value": webUrl]
+        if let meta = first["meta"] as? String, !meta.isEmpty {
+          result["meta"] = meta
+        }
+        completion(result)
         return
       }
       if let path = first["path"] as? String, path.hasPrefix("file://") {
