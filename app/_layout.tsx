@@ -80,6 +80,10 @@ export default function RootLayout() {
       });
     };
 
+    // Cold start: check the URL that launched the app
+    Linking.getInitialURL().then(handleUrl);
+
+    // Warm start: listen for incoming URL events
     const sub = Linking.addEventListener('url', (event) => handleUrl(event.url));
     return () => sub.remove();
   }, [router, session, loading]);

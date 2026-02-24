@@ -40,7 +40,9 @@ class ShareViewController: UIViewController {
         dismissWithError(message: "No content found")
         return
       }
+      NSLog("[ShareViewController] 📋 Attachment count: \(attachments.count)")
       for (index, attachment) in (attachments).enumerated() {
+        NSLog("[ShareViewController] Attachment[\(index)] types: \(attachment.registeredTypeIdentifiers)")
         if attachment.hasItemConformingToTypeIdentifier(imageContentType) {
           await handleImages(content: content, attachment: attachment, index: index)
         } else if attachment.hasItemConformingToTypeIdentifier(videoContentType) {
@@ -305,9 +307,37 @@ class ShareViewController: UIViewController {
               self.redirectToHostApp(type: .weburl)
             }
           } else {
-            NSLog("[ERROR] Cannot load preprocessing results !\(String(describing: content))")
-            self.dismissWithError(
-              message: "Cannot load preprocessing results \(String(describing: content))")
+            // No JS preprocessing results — this happens for non-Safari browsers (Chrome, etc.)
+            // that match propertyListType but don't run the JS preprocessor.
+            // Fall back to extracting the URL from the attachment directly.
+            NSLog("[ShareViewController] ⚠️ No JS preprocessing results — falling back to URL extraction")
+            if attachment.hasItemConformingToTypeIdentifier(self.urlContentType) {
+              NSLog("[ShareViewController] Attachment also has URL type — loading URL")
+              if let urlItem = try? await attachment.loadItem(forTypeIdentifier: self.urlContentType) as? URL {
+                let urlString = urlItem.absoluteString
+                NSLog("[ShareViewController] Fallback URL: \(urlString)")
+                var meta = ""
+                if urlString.hasPrefix("http") {
+                  meta = await self.fetchPageMeta(url: urlItem) ?? ""
+                }
+                self.sharedWebUrl.append(WebUrl(url: urlString, meta: meta))
+                if index == (content.attachments?.count)! - 1 {
+                  let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
+                  let data = self.toData(data: self.sharedWebUrl)
+                  userDefaults?.set(data, forKey: self.sharedKey)
+                  userDefaults?.synchronize()
+                  NSLog("[ShareViewController] ✅ Writing WEBURL (fallback) to UserDefaults")
+                  self.redirectToHostApp(type: .weburl)
+                }
+              } else {
+                NSLog("[ERROR] Fallback URL load failed")
+                self.dismissWithError(message: "Cannot load URL from attachment")
+              }
+            } else {
+              NSLog("[ERROR] No URL type available for fallback")
+              self.dismissWithError(
+                message: "Cannot load preprocessing results \(String(describing: content))")
+            }
           }
 
         }
