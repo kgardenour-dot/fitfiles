@@ -41,9 +41,20 @@ class ShareViewController: UIViewController {
         return
       }
       NSLog("[ShareViewController] 📋 Attachment count: \(attachments.count)")
+      // Save attachment types to UserDefaults so the main app can log them
+      // (share extension NSLog is not visible in Xcode console).
+      var debugTypes: [[String]] = []
       for (i, att) in attachments.enumerated() {
         NSLog("[ShareViewController] Attachment[\(i)] types: \(att.registeredTypeIdentifiers)")
+        debugTypes.append(att.registeredTypeIdentifiers)
       }
+      let debugDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
+      if let debugData = try? JSONSerialization.data(withJSONObject: debugTypes),
+         let debugStr = String(data: debugData, encoding: .utf8) {
+        debugDefaults?.set(debugStr, forKey: "\(self.sharedKey)_debug")
+      }
+      debugDefaults?.set("v2-filter", forKey: "\(self.sharedKey)_version")
+      debugDefaults?.synchronize()
 
       // Chrome shares TWO attachments: [public.url, public.plain-text].
       // The text is promotional ("Download Chrome here."), not the URL.
@@ -180,6 +191,13 @@ class ShareViewController: UIViewController {
       if let item = try? await attachment.loadItem(forTypeIdentifier: self.urlContentType) as? URL {
         let urlString = item.absoluteString
         NSLog("[ShareViewController] handleUrl: received \(urlString)")
+
+        // Save URL to secondary key immediately (before metadata fetch).
+        // This ensures the URL is available even if a concurrent text handler
+        // saves first and redirects before this handler finishes.
+        let earlyDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
+        earlyDefaults?.set(urlString, forKey: "\(self.sharedKey)_url")
+        earlyDefaults?.synchronize()
 
         // Fetch page metadata server-side (needed for non-Safari browsers like Chrome
         // that don't support NSExtensionJavaScriptPreprocessingFile)
