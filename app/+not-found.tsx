@@ -11,17 +11,29 @@ export default function NotFoundScreen() {
     if (hasRedirectedRef.current) return;
     hasRedirectedRef.current = true;
 
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
     Linking.getInitialURL().then((initialUrl) => {
+      if (cancelled) return;
       // Cold-start share URL — _layout's url listener is the single owner
       if (initialUrl?.includes('dataUrl=')) {
         return; // render "Redirecting..." only
       }
       // Warm start (initialUrl is null): likely a share URL event that
       // triggered +not-found. Delay so _layout's URL handler can navigate
-      // to /import first. If it doesn't, fall back to Library.
+      // to /import first. If _layout navigates away, this component
+      // unmounts and the timeout is cancelled via cleanup below.
       const delay = initialUrl ? 0 : 600;
-      setTimeout(() => router.replace('/(tabs)'), delay);
+      timeoutId = setTimeout(() => {
+        if (!cancelled) router.replace('/(tabs)');
+      }, delay);
     });
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   return (
