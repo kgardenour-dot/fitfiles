@@ -103,21 +103,33 @@ class ShareViewController: UIViewController {
       {
         Task { @MainActor in
 
+          // If the text is a URL (common with Chrome which shares URLs as plain text),
+          // handle it as a URL share so metadata gets fetched and type is correct.
+          let trimmed = item.trimmingCharacters(in: .whitespacesAndNewlines)
+          if let url = URL(string: trimmed), let scheme = url.scheme?.lowercased(),
+             (scheme == "http" || scheme == "https") {
+            NSLog("[ShareViewController] Text is a URL, handling as URL share: \(trimmed)")
+            var meta = ""
+            meta = await self.fetchPageMeta(url: url) ?? ""
+            self.sharedWebUrl.append(WebUrl(url: trimmed, meta: meta))
+            if index == (content.attachments?.count)! - 1 {
+              let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
+              let data = self.toData(data: self.sharedWebUrl)
+              userDefaults?.set(data, forKey: self.sharedKey)
+              userDefaults?.synchronize()
+              NSLog("[ShareViewController] ✅ Writing URL (from text) to UserDefaults")
+              self.redirectToHostApp(type: .weburl)
+            }
+            return
+          }
+
           self.sharedText.append(item)
           // If this is the last item, save sharedText in userDefaults and redirect to host app
           if index == (content.attachments?.count)! - 1 {
-            let groupId = "group.com.banditinnovations.fitlinks"
-            let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
-            NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
-            
             let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
             userDefaults?.set(self.sharedText, forKey: self.sharedKey)
             userDefaults?.synchronize()
             NSLog("[ShareViewController] ✅ Writing TEXT to UserDefaults")
-            NSLog("[ShareViewController] Suite: \(self.hostAppGroupIdentifier)")
-            NSLog("[ShareViewController] Key: \(self.sharedKey)")
-            NSLog("[ShareViewController] Text count: \(self.sharedText.count)")
-            NSLog("[ShareViewController] Text preview: \(String(self.sharedText.joined(separator: ", ").prefix(120)))")
             self.redirectToHostApp(type: .text)
           }
 
