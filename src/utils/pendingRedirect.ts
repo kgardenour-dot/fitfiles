@@ -8,13 +8,17 @@ export interface PendingRedirect {
 }
 
 export async function setPendingRedirect(data: { pathname: string; params?: Record<string, string> }): Promise<void> {
-  await SecureStore.setItemAsync(PENDING_REDIRECT_KEY, JSON.stringify(data));
+  try {
+    await SecureStore.setItemAsync(PENDING_REDIRECT_KEY, JSON.stringify(data));
+  } catch {
+    // Keychain may be unavailable during app transitions (e.g. share extension → foreground)
+  }
 }
 
 export async function getPendingRedirect(): Promise<PendingRedirect | null> {
-  const raw = await SecureStore.getItemAsync(PENDING_REDIRECT_KEY);
-  if (!raw) return null;
   try {
+    const raw = await SecureStore.getItemAsync(PENDING_REDIRECT_KEY);
+    if (!raw) return null;
     const parsed = JSON.parse(raw) as PendingRedirect;
     if (typeof parsed.pathname !== 'string') return null;
     if (parsed.params != null && typeof parsed.params !== 'object') return null;
@@ -25,5 +29,9 @@ export async function getPendingRedirect(): Promise<PendingRedirect | null> {
 }
 
 export async function clearPendingRedirect(): Promise<void> {
-  await SecureStore.deleteItemAsync(PENDING_REDIRECT_KEY);
+  try {
+    await SecureStore.deleteItemAsync(PENDING_REDIRECT_KEY);
+  } catch {
+    // Keychain may be unavailable during app transitions
+  }
 }
