@@ -69,7 +69,7 @@ supabase/
 9. **Edit workout:** Change title, tags, notes, duration — verify updates persist.
 10. **Delete workout:** Confirm dialog, workout removed, cascade deletes join rows.
 11. **Collections CRUD:** Create, rename, delete collection. Add/remove workouts.
-12. **Entitlement gating:** With a free-tier profile, hit 20 workouts — save is blocked, upgrade screen shows. Same for 5 collections.
+12. **Entitlement gating:** With a free-tier profile, hit 25 workouts — save is blocked, upgrade screen shows. Same for 5 collections. Pro tier: unlimited.
 13. **RLS isolation:** With two users, verify neither can see the other's data via direct Supabase queries.
 
 ## Next Iteration

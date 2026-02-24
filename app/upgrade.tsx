@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/constants/theme';
+import { PLAN_PRICING } from '../src/constants/limits';
 
 export default function UpgradeScreen() {
   const router = useRouter();
@@ -19,6 +20,7 @@ export default function UpgradeScreen() {
         <Ionicons name="rocket" size={72} color={Colors.primary} />
         <Text style={styles.title}>Upgrade to Pro</Text>
         <Text style={styles.subtitle}>Unlock unlimited workouts and collections</Text>
+        <Text style={styles.pricing}>${PLAN_PRICING.pro.monthly}/mo or ${PLAN_PRICING.pro.yearly}/yr</Text>
 
         <View style={styles.features}>
           {[
@@ -78,6 +80,12 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     marginTop: Spacing.xs,
     textAlign: 'center',
+  },
+  pricing: {
+    color: Colors.primary,
+    fontSize: FontSize.xl,
+    fontWeight: '800',
+    marginTop: Spacing.md,
   },
   features: {
     marginTop: Spacing.xl,
