@@ -20,42 +20,28 @@ export default function UpgradeScreen() {
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <Ionicons name="rocket" size={56} color={Colors.primary} />
-        <Text style={styles.title}>Choose Your Plan</Text>
-        <Text style={styles.subtitle}>Upgrade to save more workouts and collections</Text>
+        <Text style={styles.title}>Upgrade to Pro</Text>
+        <Text style={styles.subtitle}>Unlock unlimited workouts and collections</Text>
 
-        {/* Plus tier */}
+        {/* Free tier */}
         <View style={styles.planCard}>
           <View style={styles.planHeader}>
-            <Text style={styles.planName}>Plus</Text>
+            <Text style={styles.planName}>Free</Text>
             <View style={styles.planBadge}>
-              <Text style={styles.planBadgeText}>POPULAR</Text>
+              <Text style={styles.planBadgeText}>CURRENT</Text>
             </View>
           </View>
           <Text style={styles.planLimits}>
-            {PLAN_LIMITS.plus.maxWorkouts} workouts · {PLAN_LIMITS.plus.maxCollections} collections
+            {PLAN_LIMITS.free.maxWorkouts} workouts · {PLAN_LIMITS.free.maxCollections} collections
           </Text>
-          <View style={styles.priceRow}>
-            <Text style={styles.price}>${PLAN_PRICING.plus.monthly}/mo</Text>
-            <Text style={styles.priceDivider}>or</Text>
-            <Text style={styles.priceYearly}>${PLAN_PRICING.plus.yearly}/yr</Text>
-          </View>
           <View style={styles.features}>
-            {['50 saved workouts', '10 collections', 'All current features'].map((f) => (
+            {[`${PLAN_LIMITS.free.maxWorkouts} saved workouts`, `${PLAN_LIMITS.free.maxCollections} collections`, 'All core features'].map((f) => (
               <View key={f} style={styles.featureRow}>
-                <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
+                <Ionicons name="checkmark-circle" size={20} color={Colors.textMuted} />
                 <Text style={styles.featureText}>{f}</Text>
               </View>
             ))}
           </View>
-          <TouchableOpacity
-            style={[styles.planBtn, styles.planBtnPlus]}
-            onPress={() => {
-              // Placeholder — will integrate RevenueCat or Stripe later
-              router.back();
-            }}
-          >
-            <Text style={styles.planBtnText}>Coming Soon</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Pro tier */}
@@ -64,7 +50,11 @@ export default function UpgradeScreen() {
             <Text style={styles.planName}>Pro</Text>
           </View>
           <Text style={styles.planLimits}>Unlimited workouts · Unlimited collections</Text>
-          <Text style={styles.price}>${PLAN_PRICING.pro.yearly}/yr</Text>
+          <View style={styles.priceRow}>
+            <Text style={styles.price}>${PLAN_PRICING.pro.monthly}/mo</Text>
+            <Text style={styles.priceDivider}>or</Text>
+            <Text style={styles.priceYearly}>${PLAN_PRICING.pro.yearly}/yr</Text>
+          </View>
           <View style={styles.features}>
             {['Unlimited saved workouts', 'Unlimited collections', 'Priority support', 'Early access to new features'].map((f) => (
               <View key={f} style={styles.featureRow}>
@@ -145,7 +135,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   planBadge: {
-    backgroundColor: Colors.coralPulse,
+    backgroundColor: Colors.textMuted,
     paddingHorizontal: Spacing.sm,
     paddingVertical: 2,
     borderRadius: BorderRadius.sm,
@@ -199,11 +189,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  planBtnPlus: {
-    backgroundColor: Colors.coralPulse,
-  },
   planBtnPro: {
-    backgroundColor: Colors.sunriseYellow,
+    backgroundColor: Colors.coralPulse,
   },
   planBtnText: {
     color: '#FFFFFF',

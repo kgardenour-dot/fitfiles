@@ -3,11 +3,10 @@ import { UserProfile } from '../types/database';
 import { PLAN_LIMITS } from '../constants/limits';
 
 export function useEntitlements(profile: UserProfile | null) {
-  const tier = profile?.plan_tier ?? 'free';
+  const tier = profile?.plan_tier === 'pro' ? 'pro' : 'free';
   const limits = PLAN_LIMITS[tier];
 
   const isPro = tier === 'pro';
-  const isPlus = tier === 'plus';
 
   const canSaveWorkout = useMemo(
     () => (currentCount: number) => currentCount < limits.maxWorkouts,
@@ -19,5 +18,5 @@ export function useEntitlements(profile: UserProfile | null) {
     [limits.maxCollections],
   );
 
-  return { tier, isPro, isPlus, limits, canSaveWorkout, canCreateCollection };
+  return { tier, isPro, limits, canSaveWorkout, canCreateCollection };
 }

@@ -11,7 +11,7 @@ import { ConfettiDots } from '../../src/components/ConfettiDots';
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, profile, signOut } = useAuth();
-  const { tier, isPro, isPlus, limits } = useEntitlements(profile);
+  const { tier, isPro, limits } = useEntitlements(profile);
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -35,7 +35,7 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.userInfo}>
             <Text style={styles.email}>{user?.email ?? ''}</Text>
-            <View style={[styles.badge, isPlus && styles.badgePlus, isPro && styles.badgePro]}>
+            <View style={[styles.badge, isPro && styles.badgePro]}>
               <Text style={styles.badgeText}>{tier.toUpperCase()}</Text>
             </View>
           </View>
@@ -144,9 +144,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.sm,
     alignSelf: 'flex-start',
     marginTop: Spacing.xs,
-  },
-  badgePlus: {
-    backgroundColor: Colors.iceBlue,
   },
   badgePro: {
     backgroundColor: Colors.sunriseYellow,

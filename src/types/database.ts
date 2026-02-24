@@ -6,7 +6,7 @@ export type TagType =
   | 'format'
   | 'custom';
 
-export type PlanTier = 'free' | 'plus' | 'pro';
+export type PlanTier = 'free' | 'pro';
 
 export type EventType = 'opened' | 'done';
 
