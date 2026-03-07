@@ -2,11 +2,27 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "true"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "true"
+      }
     },
-    "production": {}
+    "beta": {
+      "distribution": "store",
+      "env": {
+        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "true"
+      }
+    },
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "false"
+      }
+    }
   }
 }

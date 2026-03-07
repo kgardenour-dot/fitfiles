@@ -4,13 +4,14 @@
     "slug": "fitlinks",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/fitlinks_logo.png",
+    "icon": "./assets/fitlinks_logo_navy.png",
     "userInterfaceStyle": "light",
     "scheme": "fitlinks",
     "splash": {
       "backgroundColor": "#0B1220"
     },
     "ios": {
+      "icon": "./assets/fitlinks_logo_navy.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.banditinnovations.fitlinks",
       "infoPlist": {
@@ -24,6 +25,7 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/fitlinks_logo_navy.png",
         "backgroundColor": "#0B1220"
       },
       "package": "com.banditinnovations.fitlinks"

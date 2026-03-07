@@ -13,6 +13,19 @@ export interface UrlMetadata {
   source_domain: string;
 }
 
+function decodeHtmlEntities(input: string): string {
+  return input
+    .replace(/&quot;/gi, '"')
+    .replace(/&#34;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&#39;/gi, "'")
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&nbsp;/gi, ' ')
+    .trim();
+}
+
 // ---------------------------------------------------------------------------
 // URL canonicalization helpers — clean up shared URLs before metadata fetch
 // ---------------------------------------------------------------------------
@@ -181,7 +194,7 @@ export async function fetchOGMetadata(url: string): Promise<OGMetadata> {
         'i',
       );
       const match = html.match(regex);
-      if (match) return match[1];
+      if (match) return decodeHtmlEntities(match[1]);
 
       // Also try reversed attribute order: content before property
       const regex2 = new RegExp(
@@ -189,17 +202,21 @@ export async function fetchOGMetadata(url: string): Promise<OGMetadata> {
         'i',
       );
       const match2 = html.match(regex2);
-      return match2 ? match2[1] : null;
+      return match2 ? decodeHtmlEntities(match2[1]) : null;
     };
 
     const ogTitle = getMetaContent('og:title');
     const twitterTitle = getMetaContent('twitter:title');
     const titleTagMatch = html.match(/<title[^>]*>([^<]*)<\/title>/i);
-    const titleFromTag = titleTagMatch ? titleTagMatch[1].trim() : '';
+    const titleFromTag = titleTagMatch ? decodeHtmlEntities(titleTagMatch[1]) : '';
+    const ogImage = getMetaContent('og:image');
+    const ogImageSecure = getMetaContent('og:image:secure_url');
+    const twitterImage = getMetaContent('twitter:image');
+    const twitterImageSrc = getMetaContent('twitter:image:src');
 
     return {
       title: ogTitle ?? twitterTitle ?? titleFromTag,
-      image: getMetaContent('og:image'),
+      image: ogImage || ogImageSecure || twitterImage || twitterImageSrc,
       description: getMetaContent('og:description') ?? getMetaContent('description'),
       siteName: getMetaContent('og:site_name'),
     };
@@ -209,6 +226,7 @@ export async function fetchOGMetadata(url: string): Promise<OGMetadata> {
 }
 
 const YOUTUBE_HOSTS = ['youtube.com', 'm.youtube.com', 'youtu.be'];
+const TIKTOK_HOSTS = ['tiktok.com', 'm.tiktok.com', 'vm.tiktok.com'];
 
 export function extractYoutubeVideoId(urlStr: string): string | null {
   try {
@@ -277,6 +295,54 @@ async function fetchYoutubeMetadata(url: string): Promise<UrlMetadata | null> {
   }
 }
 
+async function resolveFinalUrl(url: string): Promise<string> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+    });
+    clearTimeout(timeout);
+    if (typeof res.url === 'string' && /^https?:\/\//i.test(res.url)) {
+      return res.url;
+    }
+    return url;
+  } catch {
+    return url;
+  }
+}
+
+async function fetchTiktokMetadata(url: string): Promise<UrlMetadata | null> {
+  const resolvedUrl = await resolveFinalUrl(url);
+  const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(resolvedUrl)}`;
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(oembedUrl, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'FitLinks/1.0 (link preview)' },
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+
+    const data = await res.json() as { title?: string; thumbnail_url?: string };
+    return {
+      title: typeof data.title === 'string' ? decodeHtmlEntities(data.title) : '',
+      thumbnail_url: typeof data.thumbnail_url === 'string' ? data.thumbnail_url : null,
+      source_domain: 'tiktok.com',
+    };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Fetch title, thumbnail, and domain from a URL.
  * Best-effort: returns partial data or empty strings on failure.
@@ -311,6 +377,10 @@ export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
       const yt = await fetchYoutubeMetadata(fetchUrl);
       if (yt && yt.title) return yt;
     }
+    if (TIKTOK_HOSTS.includes(hostname) || hostname.endsWith('.tiktok.com')) {
+      const tt = await fetchTiktokMetadata(fetchUrl);
+      if (tt && (tt.title || tt.thumbnail_url)) return tt;
+    }
 
     const og = await fetchOGMetadata(fetchUrl);
 
@@ -321,6 +391,12 @@ export async function fetchUrlMetadata(url: string): Promise<UrlMetadata> {
     let title = og.title ?? '';
     if (/^google\s*(search)?$/i.test(title.trim()) || /^(bing|yahoo|duckduckgo|search\s*results?)$/i.test(title.trim())) {
       title = '';
+    }
+    if (!title && hostname === 'instagram.com') {
+      title = 'Instagram Post';
+    }
+    if (!title && (TIKTOK_HOSTS.includes(hostname) || hostname.endsWith('.tiktok.com'))) {
+      title = 'TikTok Video';
     }
 
     return {

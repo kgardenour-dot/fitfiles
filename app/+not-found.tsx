@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { Colors } from '../src/constants/theme';
+import { normalizeShareUrl } from '../src/utils/url';
 
 export default function NotFoundScreen() {
   const hasRedirectedRef = useRef(false);
@@ -11,29 +12,18 @@ export default function NotFoundScreen() {
     if (hasRedirectedRef.current) return;
     hasRedirectedRef.current = true;
 
-    let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
     Linking.getInitialURL().then((initialUrl) => {
-      if (cancelled) return;
-      // Cold-start share URL — _layout's url listener is the single owner
-      if (initialUrl?.includes('dataUrl=')) {
+      if (!initialUrl) {
+        router.replace('/(tabs)');
+        return;
+      }
+      // Legacy share URL — do NOT navigate; _layout's url listener is the single owner.
+      // Support both old and current share URL formats.
+      if (initialUrl.includes('dataUrl=') || normalizeShareUrl(initialUrl)?.sharedKey) {
         return; // render "Redirecting..." only
       }
-      // Warm start (initialUrl is null): likely a share URL event that
-      // triggered +not-found. Delay so _layout's URL handler can navigate
-      // to /import first. If _layout navigates away, this component
-      // unmounts and the timeout is cancelled via cleanup below.
-      const delay = initialUrl ? 0 : 600;
-      timeoutId = setTimeout(() => {
-        if (!cancelled) router.replace('/(tabs)');
-      }, delay);
+      router.replace('/(tabs)');
     });
-
-    return () => {
-      cancelled = true;
-      if (timeoutId) clearTimeout(timeoutId);
-    };
   }, []);
 
   return (

@@ -44,6 +44,19 @@ function isLowQualityTitle(t: string): boolean {
   return BAD_TITLE_PATTERNS.some((p) => p.test(trimmed));
 }
 
+function decodeHtmlEntities(input: string): string {
+  return input
+    .replace(/&quot;/gi, '"')
+    .replace(/&#34;/gi, '"')
+    .replace(/&apos;/gi, "'")
+    .replace(/&#39;/gi, "'")
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&nbsp;/gi, ' ')
+    .trim();
+}
+
 /**
  * Parse the preprocessor meta JSON from the share extension.
  * The meta is a JSON string like: {"title":"Page Title","og:title":"OG Title","og:image":"https://..."}
@@ -53,13 +66,19 @@ function parsePreprocessorMeta(metaJson: string | undefined | null): {
   image: string | null;
 } {
   if (!metaJson) return { title: '', image: null };
+  const raw = metaJson.trim();
+  if (!raw) return { title: '', image: null };
   try {
-    const parsed = JSON.parse(metaJson) as Record<string, string>;
+    const parsed = JSON.parse(raw) as Record<string, string>;
     // Prefer og:title over document.title for accuracy
     const ogTitle = parsed['og:title'] || parsed['twitter:title'] || '';
     const docTitle = parsed['title'] || '';
-    const title = ogTitle || docTitle;
-    const image = parsed['og:image'] || parsed['twitter:image'] || parsed['twitter:image:src'] || null;
+    const title = decodeHtmlEntities(ogTitle || docTitle);
+    const image = parsed['og:image']
+      || parsed['og:image:secure_url']
+      || parsed['twitter:image']
+      || parsed['twitter:image:src']
+      || null;
     return { title: isLowQualityTitle(title) ? '' : title, image };
   } catch {
     return { title: '', image: null };
@@ -99,6 +118,12 @@ function normalizeIncomingUrl(raw: string): string {
       return u.searchParams.get('url') || raw;
     }
 
+    // Instagram shares include a transient igsh param; remove tracking noise.
+    if (u.hostname.includes('instagram.com') && u.searchParams.has('igsh')) {
+      u.searchParams.delete('igsh');
+      return u.toString();
+    }
+
     // YouTube short link canonicalization
     if (u.hostname.includes('youtu.be')) {
       const id = u.pathname.split('/').filter(Boolean)[0];
@@ -120,6 +145,127 @@ function normalizeIncomingUrl(raw: string): string {
     return raw;
   } catch {
     return raw;
+  }
+}
+
+function isLikelyRedirectHost(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+    return (
+      host === 'share.google'
+      || host === 'l.instagram.com'
+      || host === 't.co'
+      || host === 'bit.ly'
+      || host === 'tinyurl.com'
+      || host === 'lnkd.in'
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isLikelyIntermediaryFinalUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.replace(/^www\./, '').toLowerCase();
+    return (
+      host === 'lookaside.instagram.com'
+      || host === 'l.facebook.com'
+      || host === 'lm.facebook.com'
+      || host.startsWith('encrypted-tbn') && host.endsWith('.gstatic.com')
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isLikelyDirectAssetUrl(url: string): boolean {
+  try {
+    const { pathname } = new URL(url);
+    return /\.(jpg|jpeg|png|webp|gif|bmp|svg|mp4|webm)(?:$|\?)/i.test(pathname);
+  } catch {
+    return false;
+  }
+}
+
+async function extractCanonicalUrlFromHtml(url: string): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+    });
+    clearTimeout(timeout);
+    const contentType = res.headers.get('content-type') ?? '';
+    if (!contentType.includes('text/html')) return null;
+    const html = await res.text();
+
+    const canonicalMatch = html.match(
+      /<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["'][^>]*>/i,
+    ) || html.match(
+      /<link[^>]*href=["']([^"']+)["'][^>]*rel=["']canonical["'][^>]*>/i,
+    );
+    if (canonicalMatch?.[1] && /^https?:\/\//i.test(canonicalMatch[1])) {
+      return canonicalMatch[1];
+    }
+
+    const ogUrlMatch = html.match(
+      /<meta[^>]*(?:property|name)=["']og:url["'][^>]*content=["']([^"']+)["']/i,
+    ) || html.match(
+      /<meta[^>]*content=["']([^"']+)["'][^>]*(?:property|name)=["']og:url["']/i,
+    );
+    if (ogUrlMatch?.[1] && /^https?:\/\//i.test(ogUrlMatch[1])) {
+      return ogUrlMatch[1];
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function isAcceptableResolvedPageUrl(url: string): boolean {
+  if (!/^https?:\/\//i.test(url)) return false;
+  if (isLikelyIntermediaryFinalUrl(url)) return false;
+  if (isLikelyDirectAssetUrl(url)) return false;
+  return true;
+}
+
+async function resolveSharedRedirectUrl(url: string): Promise<string> {
+  if (!isLikelyRedirectHost(url)) return url;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal,
+      headers: {
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+    });
+    clearTimeout(timeout);
+    const finalUrl = typeof res.url === 'string' && /^https?:\/\//i.test(res.url) ? res.url : url;
+    // Accept normal final URLs directly.
+    if (isAcceptableResolvedPageUrl(finalUrl)) {
+      return finalUrl;
+    }
+
+    // Some share shorteners resolve to crawler/image endpoints; try canonical URL extraction.
+    const canonicalFromFinal = await extractCanonicalUrlFromHtml(finalUrl);
+    if (canonicalFromFinal && isAcceptableResolvedPageUrl(canonicalFromFinal)) return canonicalFromFinal;
+    const canonicalFromOriginal = await extractCanonicalUrlFromHtml(url);
+    if (canonicalFromOriginal && isAcceptableResolvedPageUrl(canonicalFromOriginal)) return canonicalFromOriginal;
+
+    // If we cannot recover a canonical destination, keep the original shared URL.
+    return url;
+  } catch {
+    return url;
   }
 }
 
@@ -157,6 +303,19 @@ export default function ImportScreen() {
   const hasUserEditedTitleRef = useRef(false);
   const hasPreprocessorTitleRef = useRef(false);
 
+  const applySharedUrl = (incoming: string) => {
+    const normalized = normalizeIncomingUrl(incoming);
+    setUrl(normalized);
+    // Some apps (notably Chrome) share short redirect URLs; resolve in background.
+    resolveSharedRedirectUrl(normalized).then((resolved) => {
+      const normalizedResolved = normalizeIncomingUrl(resolved);
+      if (normalizedResolved !== normalized) {
+        console.log('[FitLinks] Resolved shared redirect URL:', normalizedResolved);
+        setUrl((prev) => (prev === normalized ? normalizedResolved : prev));
+      }
+    });
+  };
+
   useEffect(() => {
     fetchWorkouts();
   }, [fetchWorkouts]);
@@ -185,7 +344,7 @@ export default function ImportScreen() {
       const extracted = extractFirstUrl(sourceText);
       if (extracted) resolvedUrl = extracted;
     }
-    if (resolvedUrl) setUrl(normalizeIncomingUrl(resolvedUrl));
+    if (resolvedUrl) applySharedUrl(resolvedUrl);
     if (fileUrlParam) setFileUrl(fileUrlParam);
     const titleVal = pickParam(params.title);
     if (titleVal && !isLowQualityTitle(titleVal)) {
@@ -249,49 +408,54 @@ export default function ImportScreen() {
     console.log('[FitLinks] CONSUME share', { sharedKey, shareNonce });
     const sharedType = pickParam(params.sharedType);
 
-    getSharedPayload(sharedKey, sharedType).then((payload) => {
-      console.log('[FitLinks] getSharedPayload result:', payload);
-      if (!payload?.value) {
-        console.log('[FitLinks] ⚠️ No payload value returned');
-        return;
-      }
-      if (saveCompletedRef.current) return;
-
-      const val = payload.value.trim();
-      console.log('[FitLinks] Payload value:', val.substring(0, 120));
-
-      // Extract preprocessor meta (title, og:image) from the share extension
-      const preprocessor = parsePreprocessorMeta(payload.meta);
-      if (preprocessor.title) {
-        console.log('[FitLinks] Setting title from preprocessor:', preprocessor.title);
-        setTitle(preprocessor.title);
-        hasPreprocessorTitleRef.current = true;
-      }
-      if (preprocessor.image) {
-        console.log('[FitLinks] Setting thumbnail from preprocessor:', preprocessor.image);
-        setThumbnailUrl(preprocessor.image);
-      }
-
-      if (val.startsWith('http://') || val.startsWith('https://')) {
-        console.log('[FitLinks] Setting URL from payload');
-        setUrl(normalizeIncomingUrl(val));
-      } else if (val.startsWith('file://')) {
-        console.log('[FitLinks] Setting file URL from payload');
-        setFileUrl(val);
-        setUrl(val);
-      } else {
-        const extracted = extractFirstUrl(val);
-        if (extracted) {
-          console.log('[FitLinks] Extracted URL from text:', extracted);
-          setUrl(normalizeIncomingUrl(extracted));
-        } else {
-          console.log('[FitLinks] No URL found, adding to notes');
-          setNotes((prev) => (prev ? `${prev}\n\n${val}` : val));
+    getSharedPayload(sharedKey, sharedType)
+      .then((payload) => {
+        console.log('[FitLinks] getSharedPayload result:', payload);
+        if (!payload?.value) {
+          console.log('[FitLinks] ⚠️ No payload value returned');
+          return;
         }
-      }
+        if (saveCompletedRef.current) return;
 
-      clearSharedPayload(sharedKey).catch(() => {});
-    });
+        const val = payload.value.trim();
+        console.log('[FitLinks] Payload value:', val.substring(0, 120));
+
+        // Extract preprocessor meta (title, og:image) from the share extension
+        const preprocessor = parsePreprocessorMeta(payload.meta);
+        if (preprocessor.title) {
+          console.log('[FitLinks] Setting title from preprocessor:', preprocessor.title);
+          setTitle(preprocessor.title);
+          hasPreprocessorTitleRef.current = true;
+        }
+        if (preprocessor.image) {
+          console.log('[FitLinks] Setting thumbnail from preprocessor:', preprocessor.image);
+          setThumbnailUrl(preprocessor.image);
+        }
+
+        if (val.startsWith('http://') || val.startsWith('https://')) {
+          console.log('[FitLinks] Setting URL from payload');
+          applySharedUrl(val);
+        } else if (val.startsWith('file://')) {
+          console.log('[FitLinks] Setting file URL from payload');
+          setFileUrl(val);
+          setUrl(val);
+        } else {
+          const extracted = extractFirstUrl(val);
+          if (extracted) {
+            console.log('[FitLinks] Extracted URL from text:', extracted);
+            applySharedUrl(extracted);
+          } else {
+            console.log('[FitLinks] No URL found, adding to notes');
+            setNotes((prev) => (prev ? `${prev}\n\n${val}` : val));
+          }
+        }
+
+        clearSharedPayload(sharedKey).catch(() => {});
+      })
+      .catch((err) => {
+        // Some share-extension payloads include malformed meta; treat as non-fatal.
+        if (__DEV__) console.log('[FitLinks] getSharedPayload failed:', err);
+      });
   }, [params.sharedKey, params.sharedType, params.shareNonce, saveCompleted, isSaving]);
 
   const handlePasteSample = async () => {
@@ -335,13 +499,30 @@ export default function ImportScreen() {
         normalizedUrl = 'https://' + normalizedUrl;
       }
       normalizedUrl = normalizeIncomingUrl(normalizedUrl);
+      normalizedUrl = normalizeIncomingUrl(await resolveSharedRedirectUrl(normalizedUrl));
+
+      // On cold-start shares users may tap Save before preview fetch completes.
+      // Re-check metadata right before save so thumbnail/title aren't lost.
+      let finalTitle = title.trim();
+      let finalThumbnail = thumbnailUrl;
+      if (!finalTitle || !finalThumbnail) {
+        const meta = await fetchUrlMetadata(normalizedUrl);
+        if (!finalTitle && meta.title && !isLowQualityTitle(meta.title)) {
+          finalTitle = meta.title;
+          setTitle((prev) => (prev.trim() ? prev : meta.title));
+        }
+        if (!finalThumbnail && meta.thumbnail_url) {
+          finalThumbnail = meta.thumbnail_url;
+          setThumbnailUrl(meta.thumbnail_url);
+        }
+      }
 
       const { data } = await createWorkout(
         {
           url: normalizedUrl,
-          title: title.trim() || normalizedUrl,
+          title: finalTitle || normalizedUrl,
           source_domain: extractDomain(normalizedUrl),
-          thumbnail_url: thumbnailUrl ?? null,
+          thumbnail_url: finalThumbnail ?? null,
           notes: notes.trim() || null,
           duration_minutes: null,
           is_favorite: false,
