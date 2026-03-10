@@ -2,6 +2,19 @@
 
 A personal workout-link library by **Bandit Innovations**. Save workout URLs from anywhere on the internet — YouTube, Instagram, blogs, PDFs — and organize them with tags and collections for quick retrieval.
 
+## TestFlight Status
+
+FitLinks is live in TestFlight for iOS testers.
+
+**Invite link:** `https://testflight.apple.com/v1/invite/e5265f97379e4a9fb8c95efdd5b0ea0b42019900772e440183f6dc4e870b19fe192f11730?ct=Y9C555F9VT&advp=10000&platform=ios`  
+**Feedback contact:** `kristy@banditinnovations.com`
+
+### Current beta focus
+
+1. **Share import reliability** from Safari/Chrome into `Import`.
+2. **Save flow speed** from paste/preview to successful library save.
+3. **Collections organization** (create, add, remove, rename, delete workflows).
+
 ## Architecture
 
 FitLinks is a React Native (Expo + TypeScript) mobile app backed by Supabase (Postgres + Auth + Storage). The client communicates directly with Supabase via its JS client SDK for all CRUD, search, and filtering. Authentication uses Supabase Auth (email/password). Row-Level Security on every table ensures strict user isolation.

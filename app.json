@@ -2,7 +2,7 @@
   "expo": {
     "name": "FitLinks",
     "slug": "fitlinks",
-    "version": "1.0.0",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/fitlinks_logo_navy.png",
     "userInterfaceStyle": "light",
@@ -46,6 +46,8 @@
     ],
     "extra": {
       "router": {},
+      "testflightInviteUrl": "https://testflight.apple.com/v1/invite/e5265f97379e4a9fb8c95efdd5b0ea0b42019900772e440183f6dc4e870b19fe192f11730?ct=Y9C555F9VT&advp=10000&platform=ios",
+      "supportEmail": "kristy@banditinnovations.com",
       "eas": {
         "projectId": "bc276007-b5c7-41f6-81d9-2abc9a9e5427"
       }

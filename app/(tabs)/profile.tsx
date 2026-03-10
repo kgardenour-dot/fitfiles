@@ -1,23 +1,46 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Constants from 'expo-constants';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useEntitlements } from '../../src/hooks/useEntitlements';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
-import { PLAN_LIMITS } from '../../src/constants/limits';
 import { ConfettiDots } from '../../src/components/ConfettiDots';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, profile, signOut } = useAuth();
   const { tier, isPro, limits } = useEntitlements(profile);
+  const appExtra = (Constants.expoConfig?.extra ?? {}) as {
+    testflightInviteUrl?: string;
+    supportEmail?: string;
+  };
+  const testflightInviteUrl = appExtra.testflightInviteUrl;
+  const configuredSupportEmail = appExtra.supportEmail?.trim();
+  const supportEmail =
+    configuredSupportEmail && !configuredSupportEmail.startsWith('REPLACE_WITH_')
+      ? configuredSupportEmail
+      : 'kristy@banditinnovations.com';
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: signOut },
     ]);
+  };
+
+  const handleOpenInvite = async () => {
+    if (!testflightInviteUrl) return;
+    const canOpen = await Linking.canOpenURL(testflightInviteUrl);
+    if (canOpen) {
+      await Linking.openURL(testflightInviteUrl);
+    }
+  };
+
+  const handleEmailFeedback = async () => {
+    if (!supportEmail) return;
+    await Linking.openURL(`mailto:${supportEmail}`);
   };
 
   return (
@@ -57,6 +80,31 @@ export default function ProfileScreen() {
             {limits.maxCollections === Infinity ? 'Unlimited' : limits.maxCollections}
           </Text>
         </View>
+      </View>
+
+      {/* TestFlight details */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>TestFlight</Text>
+        <View style={styles.statusPill}>
+          <Ionicons name="rocket" size={14} color="#FFFFFF" />
+          <Text style={styles.statusPillText}>Live now</Text>
+        </View>
+        <Text style={styles.testflightBody}>
+          Thanks for testing FitLinks. Please focus feedback on share import reliability, save flow
+          speed, and collection organization.
+        </Text>
+        {testflightInviteUrl ? (
+          <TouchableOpacity onPress={handleOpenInvite} activeOpacity={0.75} style={styles.linkButton}>
+            <Ionicons name="open-outline" size={14} color={Colors.aquaMint} />
+            <Text style={styles.linkButtonText}>Join/Test in TestFlight</Text>
+          </TouchableOpacity>
+        ) : (
+          <Text style={styles.helperText}>Add `extra.testflightInviteUrl` in `app.json` to show invite link.</Text>
+        )}
+        <TouchableOpacity onPress={handleEmailFeedback} activeOpacity={0.75} style={styles.linkButton}>
+          <Ionicons name="mail-outline" size={14} color={Colors.aquaMint} />
+          <Text style={styles.linkButtonText}>Send feedback: {supportEmail}</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Upgrade button */}
@@ -168,6 +216,46 @@ const styles = StyleSheet.create({
     color: Colors.aquaMint,
     fontSize: FontSize.sm,
     fontWeight: '600',
+  },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.aquaMint,
+    borderRadius: 999,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    gap: 6,
+    marginBottom: Spacing.sm,
+  },
+  statusPillText: {
+    color: '#FFFFFF',
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  testflightBody: {
+    color: Colors.text,
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+  },
+  linkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginTop: Spacing.sm,
+    gap: 6,
+  },
+  linkButtonText: {
+    color: Colors.aquaMint,
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+  },
+  helperText: {
+    marginTop: Spacing.sm,
+    color: Colors.textSecondary,
+    fontSize: FontSize.xs,
   },
   upgradeBtn: {
     flexDirection: 'row',
