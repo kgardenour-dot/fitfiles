@@ -38,6 +38,35 @@ const SORT_OPTIONS: { key: SortOption; label: string }[] = [
   { key: 'favorites', label: 'Faves' },
 ];
 
+function filterWorkoutsLocally(workouts: WorkoutLinkWithTags[], query: string): WorkoutLinkWithTags[] {
+  const normalized = query.trim().toLowerCase();
+  if (!normalized) return workouts;
+
+  return workouts.filter((workout) => {
+    const fields = [
+      workout.title ?? '',
+      workout.notes ?? '',
+      workout.source_domain ?? '',
+      workout.url ?? '',
+      ...(workout.tags ?? []).map((tag) => tag.name ?? ''),
+    ];
+    return fields.some((value) => value.toLowerCase().includes(normalized));
+  });
+}
+
+function normalizeSearchResults(data: unknown): WorkoutLinkWithTags[] {
+  if (!Array.isArray(data)) return [];
+
+  return data.map((item) => {
+    const row = (item ?? {}) as Record<string, unknown>;
+    const tags = Array.isArray(row.tags) ? row.tags : [];
+    return {
+      ...(row as WorkoutLinkWithTags),
+      tags: tags as WorkoutLinkWithTags['tags'],
+    };
+  });
+}
+
 export default function LibraryScreen() {
   const router = useRouter();
   const { workouts, loading, fetchWorkouts, toggleFavorite } = useWorkouts();
@@ -52,7 +81,11 @@ export default function LibraryScreen() {
   const isSearching = debouncedQuery.trim().length > 0;
 
   useEffect(() => {
-    if (!isSearching) return;
+    if (!isSearching) {
+      setSearchLoading(false);
+      setSearchResults([]);
+      return;
+    }
 
     let cancelled = false;
     setSearchResults([]);
@@ -70,9 +103,10 @@ export default function LibraryScreen() {
 
       if (error) {
         console.log('[search_workout_links] error', error.message);
-        setSearchResults([]);
+        // Keep search usable even if RPC isn't available in this environment.
+        setSearchResults(filterWorkoutsLocally(workouts, debouncedQuery));
       } else {
-        setSearchResults((data ?? []) as WorkoutLinkWithTags[]);
+        setSearchResults(normalizeSearchResults(data));
       }
       setSearchLoading(false);
     })();
@@ -80,7 +114,7 @@ export default function LibraryScreen() {
     return () => {
       cancelled = true;
     };
-  }, [debouncedQuery, sort, isSearching]);
+  }, [debouncedQuery, sort, isSearching, workouts]);
 
   const listData = isSearching ? searchResults : workouts;
 
