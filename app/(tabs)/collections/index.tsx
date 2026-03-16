@@ -10,10 +10,12 @@ import {
   Alert,
   RefreshControl,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as SecureStore from 'expo-secure-store';
 import { useCollections } from '../../../src/hooks/useCollections';
 import { useAuth } from '../../../src/hooks/useAuth';
 import { useEntitlements } from '../../../src/hooks/useEntitlements';
@@ -31,6 +33,8 @@ const FOLDER_COLORS = [
   Colors.softMagenta,
 ];
 
+const COLLECTIONS_TUTORIAL_SEEN_KEY = 'fitlinks:collections-tutorial-seen:v1';
+
 export default function CollectionsScreen() {
   const router = useRouter();
   const { profile } = useAuth();
@@ -41,11 +45,51 @@ export default function CollectionsScreen() {
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showCollectionsTutorial, setShowCollectionsTutorial] = useState(false);
+  const [tutorialChecked, setTutorialChecked] = useState(false);
   const listRef = useRef<FlatList>(null);
 
   useEffect(() => {
     fetchCollections();
   }, [fetchCollections]);
+
+  useEffect(() => {
+    if (tutorialChecked || loading) return;
+    if (collections.length > 0) {
+      setTutorialChecked(true);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const seen = await SecureStore.getItemAsync(COLLECTIONS_TUTORIAL_SEEN_KEY);
+      if (cancelled) return;
+      if (seen === '1') {
+        setTutorialChecked(true);
+        return;
+      }
+      setShowCollectionsTutorial(true);
+      setTutorialChecked(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tutorialChecked, loading, collections.length]);
+
+  const dismissCollectionsTutorial = useCallback(async () => {
+    setShowCollectionsTutorial(false);
+    try {
+      await SecureStore.setItemAsync(COLLECTIONS_TUTORIAL_SEEN_KEY, '1');
+    } catch {
+      // Non-blocking if persistence fails.
+    }
+  }, []);
+
+  const startCreateFromTutorial = useCallback(async () => {
+    await dismissCollectionsTutorial();
+    setShowCreate(true);
+  }, [dismissCollectionsTutorial]);
 
   const handleCreate = async () => {
     const name = newName.trim();
@@ -183,6 +227,47 @@ export default function CollectionsScreen() {
           <RefreshControl refreshing={loading} onRefresh={fetchCollections} tintColor={Colors.aquaMint} />
         }
       />
+
+      <Modal
+        visible={showCollectionsTutorial}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          void dismissCollectionsTutorial();
+        }}
+      >
+        <View style={styles.tutorialOverlay}>
+          <View style={styles.tutorialCard}>
+            <Text style={styles.tutorialTitle}>Quick guide: Collections</Text>
+            <Text style={styles.tutorialBody}>
+              Use collections to group workouts by goal, like Strength, Mobility, or 20-min sessions.
+            </Text>
+            <Text style={styles.tutorialBody}>
+              Tap +, name your collection, then open a saved workout and add it to one or more collections.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.tutorialPrimaryBtn}
+              onPress={() => {
+                void startCreateFromTutorial();
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.tutorialPrimaryBtnText}>Create collection</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.tutorialSecondaryBtn}
+              onPress={() => {
+                void dismissCollectionsTutorial();
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.tutorialSecondaryBtnText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -290,5 +375,54 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: FontSize.md,
     fontWeight: '600',
+  },
+  tutorialOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(11, 18, 32, 0.75)',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+  },
+  tutorialCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.lg,
+  },
+  tutorialTitle: {
+    color: Colors.text,
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    marginBottom: Spacing.sm,
+  },
+  tutorialBody: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+    marginBottom: Spacing.sm,
+  },
+  tutorialPrimaryBtn: {
+    backgroundColor: Colors.coralPulse,
+    borderRadius: BorderRadius.md,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.sm,
+  },
+  tutorialPrimaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  tutorialSecondaryBtn: {
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.sm,
+  },
+  tutorialSecondaryBtnText: {
+    color: Colors.aquaMint,
+    fontSize: FontSize.sm,
+    fontWeight: '700',
   },
 });

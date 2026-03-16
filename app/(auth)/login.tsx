@@ -53,9 +53,9 @@ export default function LoginScreen() {
           resizeMode="contain"
         />
 
-        {/* Welcome text */}
-        <Text style={styles.title}>Welcome back!</Text>
-        <Text style={styles.subtitle}>Your workout link library</Text>
+        {/* Sign-in guidance */}
+        <Text style={styles.title}>Sign in to your account</Text>
+        <Text style={styles.subtitle}>New here? Create an account below.</Text>
 
         {/* Spacer pushes form toward the bottom */}
         <View style={styles.spacer} />

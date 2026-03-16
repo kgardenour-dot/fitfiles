@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { canonicalizeUrl, extractDomain } from '../lib/og-scraper';
+import { canonicalizeUrl, extractDomain, fetchUrlMetadata } from '../lib/og-scraper';
 import { WorkoutLink, WorkoutLinkWithTags, Tag } from '../types/database';
 
 export type SortOption = 'recent' | 'opened' | 'favorites';
@@ -32,6 +32,23 @@ interface WorkoutsContextValue {
 }
 
 const WorkoutsContext = createContext<WorkoutsContextValue | null>(null);
+
+function isLocalFileUri(value: string | null | undefined): boolean {
+  return typeof value === 'string' && value.startsWith('file://');
+}
+
+async function resolvePersistentThumbnail(
+  workoutUrl: string,
+  thumbnailUrl: string | null | undefined,
+): Promise<string | null> {
+  if (!isLocalFileUri(thumbnailUrl)) return thumbnailUrl ?? null;
+  try {
+    const refreshed = await fetchUrlMetadata(workoutUrl);
+    return refreshed.thumbnail_url ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
   const [workouts, setWorkouts] = useState<WorkoutLinkWithTags[]>([]);
@@ -105,13 +122,14 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
       if (!userId) throw new Error('You must be signed in to save a workout.');
 
       const url = canonicalizeUrl(workout.url);
+      const persistentThumbnail = await resolvePersistentThumbnail(url, workout.thumbnail_url);
       const payload = {
         user_id: userId,
         url,
         title: workout.title,
         source_domain:
           extractDomain(url) || (workout.source_domain ?? ''),
-        thumbnail_url: workout.thumbnail_url ?? null,
+        thumbnail_url: persistentThumbnail,
         notes: workout.notes ?? null,
         duration_minutes: workout.duration_minutes ?? null,
         is_favorite: workout.is_favorite ?? false,
@@ -136,7 +154,7 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
           const updates = {
             title: workout.title,
             notes: workout.notes,
-            thumbnail_url: workout.thumbnail_url,
+            thumbnail_url: persistentThumbnail,
             source_domain: workout.source_domain,
           };
           const { data: updated, error: updateErr } = await supabase
@@ -183,9 +201,21 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
       updates: Partial<Pick<WorkoutLink, 'title' | 'notes' | 'duration_minutes' | 'is_favorite' | 'thumbnail_url'>>,
       tagIds?: string[],
     ) => {
+      const normalizedUpdates = { ...updates };
+
+      if (isLocalFileUri(normalizedUpdates.thumbnail_url)) {
+        const { data: row } = await supabase
+          .from('workout_links')
+          .select('url')
+          .eq('id', id)
+          .single();
+        const persistentThumbnail = await resolvePersistentThumbnail(row?.url ?? '', normalizedUpdates.thumbnail_url);
+        normalizedUpdates.thumbnail_url = persistentThumbnail;
+      }
+
       const { error } = await supabase
         .from('workout_links')
-        .update(updates)
+        .update(normalizedUpdates)
         .eq('id', id);
       if (error) throw error;
 

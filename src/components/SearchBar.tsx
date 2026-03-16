@@ -8,7 +8,7 @@ interface Props {
   placeholder?: string;
 }
 
-export function SearchBar({ value, onChangeText, placeholder = 'Search workouts...' }: Props) {
+export function SearchBar({ value, onChangeText, placeholder = 'Search titles, notes, or tags...' }: Props) {
   return (
     <View style={styles.container}>
       <Ionicons name="search-outline" size={20} color={Colors.textMuted} style={styles.icon} />

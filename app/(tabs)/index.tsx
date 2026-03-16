@@ -10,10 +10,12 @@ import {
   Image,
   Text,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as SecureStore from 'expo-secure-store';
 import { useWorkouts, SortOption } from '../../src/hooks/useWorkouts';
 import { WorkoutCard } from '../../src/components/WorkoutCard';
 import { SearchBar } from '../../src/components/SearchBar';
@@ -22,6 +24,8 @@ import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/the
 import { ConfettiDots } from '../../src/components/ConfettiDots';
 import { supabase } from '../../src/lib/supabase';
 import { WorkoutLinkWithTags } from '../../src/types/database';
+
+const SAVE_TUTORIAL_SEEN_KEY = 'fitlinks:save-link-tutorial-seen:v1';
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = React.useState(value);
@@ -77,6 +81,8 @@ export default function LibraryScreen() {
 
   const [searchResults, setSearchResults] = useState<WorkoutLinkWithTags[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [showSaveTutorial, setShowSaveTutorial] = useState(false);
+  const [tutorialChecked, setTutorialChecked] = useState(false);
 
   const isSearching = debouncedQuery.trim().length > 0;
 
@@ -115,6 +121,44 @@ export default function LibraryScreen() {
       cancelled = true;
     };
   }, [debouncedQuery, sort, isSearching, workouts]);
+
+  useEffect(() => {
+    if (tutorialChecked || loading || isSearching) return;
+    if (workouts.length > 0) {
+      setTutorialChecked(true);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      const seen = await SecureStore.getItemAsync(SAVE_TUTORIAL_SEEN_KEY);
+      if (cancelled) return;
+      if (seen === '1') {
+        setTutorialChecked(true);
+        return;
+      }
+      setShowSaveTutorial(true);
+      setTutorialChecked(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tutorialChecked, loading, isSearching, workouts.length]);
+
+  const dismissSaveTutorial = useCallback(async () => {
+    setShowSaveTutorial(false);
+    try {
+      await SecureStore.setItemAsync(SAVE_TUTORIAL_SEEN_KEY, '1');
+    } catch {
+      // Non-blocking: if persistence fails, keep app flow working.
+    }
+  }, []);
+
+  const startSavingFromTutorial = useCallback(async () => {
+    await dismissSaveTutorial();
+    router.push('/save');
+  }, [dismissSaveTutorial, router]);
 
   const listData = isSearching ? searchResults : workouts;
 
@@ -222,6 +266,50 @@ export default function LibraryScreen() {
         }
         refreshControl={<RefreshControl refreshing={loading} onRefresh={reload} tintColor={Colors.aquaMint} />}
       />
+
+      <Modal
+        visible={showSaveTutorial}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          void dismissSaveTutorial();
+        }}
+      >
+        <View style={styles.tutorialOverlay}>
+          <View style={styles.tutorialCard}>
+            <Text style={styles.tutorialTitle}>How to save links</Text>
+            <Text style={styles.tutorialBody}>
+              Tap the + button in the top-right, paste your workout URL, then hit Save Workout.
+            </Text>
+            <Text style={styles.tutorialBody}>
+              Add a few tags when saving (like Strength, HIIT, Mobility) so searches return faster.
+            </Text>
+            <Text style={styles.tutorialBody}>
+              You can also share from apps like YouTube/Safari and choose FitLinks to import instantly.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.tutorialPrimaryBtn}
+              onPress={() => {
+                void startSavingFromTutorial();
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.tutorialPrimaryBtnText}>Save my first link</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.tutorialSecondaryBtn}
+              onPress={() => {
+                void dismissSaveTutorial();
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.tutorialSecondaryBtnText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -309,5 +397,54 @@ const styles = StyleSheet.create({
   list: {
     padding: Spacing.md,
     paddingTop: Spacing.sm,
+  },
+  tutorialOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(11, 18, 32, 0.75)',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+  },
+  tutorialCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.lg,
+  },
+  tutorialTitle: {
+    color: Colors.text,
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    marginBottom: Spacing.sm,
+  },
+  tutorialBody: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+    marginBottom: Spacing.sm,
+  },
+  tutorialPrimaryBtn: {
+    backgroundColor: Colors.coralPulse,
+    borderRadius: BorderRadius.md,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.sm,
+  },
+  tutorialPrimaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  tutorialSecondaryBtn: {
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.sm,
+  },
+  tutorialSecondaryBtnText: {
+    color: Colors.aquaMint,
+    fontSize: FontSize.sm,
+    fontWeight: '700',
   },
 });
