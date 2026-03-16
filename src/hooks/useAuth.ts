@@ -9,28 +9,7 @@ export function useAuth() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) fetchProfile(s.user.id);
-      else setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-      if (s?.user) fetchProfile(s.user.id);
-      else {
-        setProfile(null);
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('user_profiles')
       .select('*')
@@ -38,7 +17,33 @@ export function useAuth() {
       .single();
     setProfile(data as UserProfile | null);
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      setSession(s);
+      setUser(s?.user ?? null);
+      if (s?.user) void fetchProfile(s.user.id);
+      else setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s);
+      setUser(s?.user ?? null);
+      if (s?.user) void fetchProfile(s.user.id);
+      else {
+        setProfile(null);
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [fetchProfile]);
+
+  const refreshProfile = useCallback(async () => {
+    if (!user?.id) return;
+    await fetchProfile(user.id);
+  }, [user?.id, fetchProfile]);
 
   const signUp = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({ email, password });
@@ -54,5 +59,5 @@ export function useAuth() {
     await supabase.auth.signOut();
   }, []);
 
-  return { session, user, profile, loading, signUp, signIn, signOut };
+  return { session, user, profile, loading, signUp, signIn, signOut, refreshProfile };
 }

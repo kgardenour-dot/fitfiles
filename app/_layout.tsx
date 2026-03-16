@@ -12,6 +12,7 @@ import { WorkoutsProvider } from '../src/contexts/WorkoutsContext';
 import { getPendingRedirect, setPendingRedirect, clearPendingRedirect } from '../src/utils/pendingRedirect';
 import { normalizeShareUrl } from '../src/utils/url';
 import { shouldHandleLegacyShare } from '../src/utils/shareGate';
+import { configureRevenueCat } from '../src/lib/revenuecat';
 
 function pickParam(value: unknown): string | undefined {
   if (value == null) return undefined;
@@ -49,6 +50,10 @@ export default function RootLayout() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    void configureRevenueCat(session?.user?.id ?? null);
+  }, [session?.user?.id]);
 
   // Single owner for legacy share navigation (cold + warm). +not-found does NOT navigate for legacy shares.
   useEffect(() => {

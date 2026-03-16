@@ -1,13 +1,109 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import Purchases, { PurchasesOffering, PurchasesPackage } from 'react-native-purchases';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/constants/theme';
 import { PLAN_LIMITS, PLAN_PRICING } from '../src/constants/limits';
 import { ConfettiDots } from '../src/components/ConfettiDots';
+import { useAuth } from '../src/hooks/useAuth';
+import { configureRevenueCat } from '../src/lib/revenuecat';
 
 export default function UpgradeScreen() {
   const router = useRouter();
+  const { user } = useAuth();
+  const [offering, setOffering] = useState<PurchasesOffering | null>(null);
+  const [loadingOfferings, setLoadingOfferings] = useState(true);
+  const [actionLoading, setActionLoading] = useState<'monthly' | 'yearly' | 'restore' | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadOfferings = async () => {
+      setLoadingOfferings(true);
+      try {
+        const configured = await configureRevenueCat(user?.id ?? null);
+        if (!configured) {
+          if (!cancelled) setOffering(null);
+          return;
+        }
+        const offerings = await Purchases.getOfferings();
+        if (!cancelled) {
+          setOffering(offerings.current ?? null);
+        }
+      } catch (error) {
+        console.warn('[FitLinks] Could not load RevenueCat offerings', error);
+        if (!cancelled) setOffering(null);
+      } finally {
+        if (!cancelled) setLoadingOfferings(false);
+      }
+    };
+
+    void loadOfferings();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  const monthlyPackage = useMemo(() => {
+    if (!offering) return null;
+    return (
+      offering.monthly ??
+      offering.availablePackages.find((pkg) => pkg.packageType === 'MONTHLY') ??
+      null
+    );
+  }, [offering]);
+
+  const yearlyPackage = useMemo(() => {
+    if (!offering) return null;
+    return (
+      offering.annual ??
+      offering.availablePackages.find((pkg) => pkg.packageType === 'ANNUAL') ??
+      null
+    );
+  }, [offering]);
+
+  const handlePurchase = async (pkg: PurchasesPackage, purchaseType: 'monthly' | 'yearly') => {
+    setActionLoading(purchaseType);
+    try {
+      await Purchases.purchasePackage(pkg);
+      Alert.alert('Upgrade successful', 'Your Pro access is active.');
+      router.back();
+    } catch (error: unknown) {
+      if (typeof error === 'object' && error && 'userCancelled' in error && (error as { userCancelled?: boolean }).userCancelled) {
+        return;
+      }
+      const message = error instanceof Error ? error.message : 'Unable to complete purchase right now.';
+      Alert.alert('Purchase failed', message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    setActionLoading('restore');
+    try {
+      await Purchases.restorePurchases();
+      Alert.alert('Restore complete', 'If you had an active subscription, Pro has been restored.');
+      router.back();
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unable to restore purchases right now.';
+      Alert.alert('Restore failed', message);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const canPurchase = !loadingOfferings && Boolean(monthlyPackage || yearlyPackage);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -51,9 +147,13 @@ export default function UpgradeScreen() {
           </View>
           <Text style={styles.planLimits}>Unlimited workouts · Unlimited collections</Text>
           <View style={styles.priceRow}>
-            <Text style={styles.price}>${PLAN_PRICING.pro.monthly}/mo</Text>
+            <Text style={styles.price}>
+              {monthlyPackage?.product.priceString ?? `$${PLAN_PRICING.pro.monthly}`}/mo
+            </Text>
             <Text style={styles.priceDivider}>or</Text>
-            <Text style={styles.priceYearly}>${PLAN_PRICING.pro.yearly}/yr</Text>
+            <Text style={styles.priceYearly}>
+              {yearlyPackage?.product.priceString ?? `$${PLAN_PRICING.pro.yearly}`}/yr
+            </Text>
           </View>
           <View style={styles.features}>
             {['Unlimited saved workouts', 'Unlimited collections', 'Priority support', 'Early access to new features'].map((f) => (
@@ -63,19 +163,61 @@ export default function UpgradeScreen() {
               </View>
             ))}
           </View>
-          <TouchableOpacity
-            style={[styles.planBtn, styles.planBtnPro]}
-            onPress={() => {
-              // Placeholder — will integrate RevenueCat or Stripe later
-              router.back();
-            }}
-          >
-            <Text style={styles.planBtnText}>Coming Soon</Text>
-          </TouchableOpacity>
+
+          {loadingOfferings ? (
+            <View style={styles.loadingRow}>
+              <ActivityIndicator color={Colors.aquaMint} />
+              <Text style={styles.loadingText}>Loading subscription options...</Text>
+            </View>
+          ) : (
+            <>
+              {monthlyPackage ? (
+                <TouchableOpacity
+                  style={[styles.planBtn, styles.planBtnPro]}
+                  onPress={() => {
+                    void handlePurchase(monthlyPackage, 'monthly');
+                  }}
+                  disabled={actionLoading !== null}
+                >
+                  <Text style={styles.planBtnText}>
+                    {actionLoading === 'monthly' ? 'Processing...' : 'Start Monthly Plan'}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+
+              {yearlyPackage ? (
+                <TouchableOpacity
+                  style={[styles.planBtn, styles.planBtnOutline]}
+                  onPress={() => {
+                    void handlePurchase(yearlyPackage, 'yearly');
+                  }}
+                  disabled={actionLoading !== null}
+                >
+                  <Text style={[styles.planBtnText, styles.planBtnOutlineText]}>
+                    {actionLoading === 'yearly' ? 'Processing...' : 'Start Annual Plan'}
+                  </Text>
+                </TouchableOpacity>
+              ) : null}
+
+              <TouchableOpacity
+                style={styles.restoreBtn}
+                onPress={() => {
+                  void handleRestorePurchases();
+                }}
+                disabled={actionLoading !== null}
+              >
+                <Text style={styles.restoreBtnText}>
+                  {actionLoading === 'restore' ? 'Restoring...' : 'Restore Purchases'}
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         <Text style={styles.note}>
-          Subscriptions will be available in a future update.
+          {canPurchase
+            ? 'Subscriptions are managed through your App Store or Google Play account.'
+            : 'Subscriptions are not configured for this build yet. Add RevenueCat API keys in env and EAS.'}
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -188,14 +330,44 @@ const styles = StyleSheet.create({
     height: 48,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: Spacing.sm,
   },
   planBtnPro: {
     backgroundColor: Colors.coralPulse,
+  },
+  planBtnOutline: {
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.aquaMint,
   },
   planBtnText: {
     color: '#FFFFFF',
     fontSize: FontSize.md,
     fontWeight: '700',
+  },
+  planBtnOutlineText: {
+    color: Colors.aquaMint,
+  },
+  restoreBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 40,
+    marginTop: Spacing.sm,
+  },
+  restoreBtnText: {
+    color: Colors.aquaMint,
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+  },
+  loadingRow: {
+    marginTop: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  loadingText: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.sm,
   },
   note: {
     color: Colors.textMuted,
