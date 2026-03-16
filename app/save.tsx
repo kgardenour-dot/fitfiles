@@ -222,6 +222,7 @@ export default function SaveScreen() {
 
           {/* Tags */}
           <Text style={styles.label}>Tags</Text>
+          <Text style={styles.helperText}>Tip: Add 1-3 tags to make search faster later.</Text>
           <TagSelector
             tags={tags}
             selectedIds={selectedTags}
@@ -271,6 +272,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: Spacing.xs,
     marginTop: Spacing.md,
+  },
+  helperText: {
+    color: Colors.textMuted,
+    fontSize: FontSize.sm,
+    marginBottom: Spacing.xs,
   },
   input: {
     backgroundColor: Colors.inputBg,
