@@ -1,0 +1,28 @@
+{
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "true"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "true"
+      }
+    },
+    "beta": {
+      "distribution": "store",
+      "env": {
+        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "true"
+      }
+    },
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "false"
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+import { useMemo } from 'react';
+import { UserProfile } from '../types/database';
+import { PLAN_LIMITS } from '../constants/limits';
+import { BETA_DISABLE_PAYWALL } from '../config/flags';
+
+export function useEntitlements(profile: UserProfile | null) {
+  const tier = BETA_DISABLE_PAYWALL ? 'pro' : (profile?.plan_tier ?? 'free');
+  const limits = PLAN_LIMITS[tier];
+
+  const isPro = tier === 'pro';
+  const isPlus = tier === 'plus';
+
+  const canSaveWorkout = useMemo(
+    () => (currentCount: number) => currentCount < limits.maxWorkouts,
+    [limits.maxWorkouts],
+  );
+
+  const canCreateCollection = useMemo(
+    () => (currentCount: number) => currentCount < limits.maxCollections,
+    [limits.maxCollections],
+  );
+
+  return { tier, isPro, isPlus, limits, canSaveWorkout, canCreateCollection };
+}
