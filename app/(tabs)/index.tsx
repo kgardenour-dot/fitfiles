@@ -25,7 +25,7 @@ import { ConfettiDots } from '../../src/components/ConfettiDots';
 import { supabase } from '../../src/lib/supabase';
 import { WorkoutLinkWithTags } from '../../src/types/database';
 
-const SAVE_TUTORIAL_SEEN_KEY = 'fitlinks:save-link-tutorial-seen:v1';
+const SAVE_TUTORIAL_SEEN_KEY = 'fitlinks_save_link_tutorial_seen_v1';
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = React.useState(value);
@@ -124,10 +124,6 @@ export default function LibraryScreen() {
 
   useEffect(() => {
     if (tutorialChecked || loading || isSearching) return;
-    if (workouts.length > 0) {
-      setTutorialChecked(true);
-      return;
-    }
 
     let cancelled = false;
     (async () => {
@@ -144,7 +140,7 @@ export default function LibraryScreen() {
     return () => {
       cancelled = true;
     };
-  }, [tutorialChecked, loading, isSearching, workouts.length]);
+  }, [tutorialChecked, loading, isSearching]);
 
   const dismissSaveTutorial = useCallback(async () => {
     setShowSaveTutorial(false);

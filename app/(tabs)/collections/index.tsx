@@ -33,7 +33,7 @@ const FOLDER_COLORS = [
   Colors.softMagenta,
 ];
 
-const COLLECTIONS_TUTORIAL_SEEN_KEY = 'fitlinks:collections-tutorial-seen:v1';
+const COLLECTIONS_TUTORIAL_SEEN_KEY = 'fitlinks_collections_tutorial_seen_v1';
 
 export default function CollectionsScreen() {
   const router = useRouter();
@@ -55,10 +55,6 @@ export default function CollectionsScreen() {
 
   useEffect(() => {
     if (tutorialChecked || loading) return;
-    if (collections.length > 0) {
-      setTutorialChecked(true);
-      return;
-    }
 
     let cancelled = false;
     (async () => {
@@ -75,7 +71,7 @@ export default function CollectionsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [tutorialChecked, loading, collections.length]);
+  }, [tutorialChecked, loading]);
 
   const dismissCollectionsTutorial = useCallback(async () => {
     setShowCollectionsTutorial(false);

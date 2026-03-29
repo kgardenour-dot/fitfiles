@@ -62,7 +62,7 @@ export default function SignUpScreen() {
         />
 
         {/* Heading */}
-        <Text style={styles.title}>Join FitLinks!</Text>
+        <Text style={styles.title}>Welcome!</Text>
         <Text style={styles.subtitle}>Save, tag & organize every workout</Text>
 
         {/* Form */}
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: Colors.text,
-    fontSize: FontSize.hero,
+    fontSize: FontSize.xxl,
     fontWeight: '800',
     textAlign: 'center',
   },
