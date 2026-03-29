@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WorkoutLinkWithTags } from '../types/database';
@@ -11,10 +12,22 @@ interface Props {
 }
 
 export function WorkoutCard({ workout, onPress, onFavorite }: Props) {
+  const [hasThumbnailError, setHasThumbnailError] = useState(false);
+
+  useEffect(() => {
+    setHasThumbnailError(false);
+  }, [workout.id, workout.thumbnail_url]);
+
+  const showThumbnail = Boolean(workout.thumbnail_url) && !hasThumbnailError;
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      {workout.thumbnail_url ? (
-        <Image source={{ uri: workout.thumbnail_url }} style={styles.thumbnail} />
+      {showThumbnail ? (
+        <Image
+          source={{ uri: workout.thumbnail_url! }}
+          style={styles.thumbnail}
+          onError={() => setHasThumbnailError(true)}
+        />
       ) : (
         <View style={[styles.thumbnail, styles.placeholderThumb]}>
           <Ionicons name="barbell-outline" size={32} color={Colors.textMuted} />

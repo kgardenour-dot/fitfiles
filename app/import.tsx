@@ -301,7 +301,9 @@ export default function ImportScreen() {
   const consumedShareNonceRef = useRef<string | null>(null);
   const saveCompletedRef = useRef(false);
   const hasUserEditedTitleRef = useRef(false);
+  const hasUserEditedUrlRef = useRef(false);
   const hasPreprocessorTitleRef = useRef(false);
+  const lastPrefillSignatureRef = useRef<string | null>(null);
 
   const applySharedUrl = (incoming: string) => {
     const normalized = normalizeIncomingUrl(incoming);
@@ -339,20 +341,32 @@ export default function ImportScreen() {
     const sourceUrl = pickParam(params.sourceUrl ?? params.url);
     const sourceText = pickParam(params.sourceText ?? params.text);
     const fileUrlParam = pickParam(params.fileUrl);
+    const titleVal = pickParam(params.title);
+    const imageVal = pickParam(params.image);
+    const shareNonce = pickParam(params.shareNonce);
+    const signature = JSON.stringify({
+      sourceUrl: sourceUrl ?? '',
+      sourceText: sourceText ?? '',
+      fileUrl: fileUrlParam ?? '',
+      title: titleVal ?? '',
+      image: imageVal ?? '',
+      shareNonce: shareNonce ?? '',
+    });
+    if (lastPrefillSignatureRef.current === signature) return;
+    lastPrefillSignatureRef.current = signature;
+
     let resolvedUrl = sourceUrl || '';
     if (!resolvedUrl && sourceText) {
       const extracted = extractFirstUrl(sourceText);
       if (extracted) resolvedUrl = extracted;
     }
-    if (resolvedUrl) applySharedUrl(resolvedUrl);
+    if (resolvedUrl && !hasUserEditedUrlRef.current) applySharedUrl(resolvedUrl);
     if (fileUrlParam) setFileUrl(fileUrlParam);
-    const titleVal = pickParam(params.title);
     if (titleVal && !isLowQualityTitle(titleVal)) {
       setTitle(titleVal);
       hasPreprocessorTitleRef.current = true;
     }
     // Image from warm-start expo-share-intent pathway
-    const imageVal = pickParam(params.image);
     if (imageVal) setThumbnailUrl(imageVal);
   }, [saveCompleted, params.sourceUrl, params.url, params.sourceText, params.text, params.fileUrl, params.title, params.image]);
 
@@ -609,7 +623,10 @@ export default function ImportScreen() {
           <TextInput
             style={styles.input}
             value={url}
-            onChangeText={setUrl}
+            onChangeText={(text) => {
+              hasUserEditedUrlRef.current = true;
+              setUrl(text);
+            }}
             placeholder="https://..."
             placeholderTextColor={Colors.textMuted}
             autoCapitalize="none"
