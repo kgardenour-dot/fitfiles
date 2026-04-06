@@ -9,6 +9,8 @@ import { Session } from '@supabase/supabase-js';
 import { Colors } from '../src/constants/theme';
 import { useShareIntake } from '../src/hooks/useShareIntake';
 import { WorkoutsProvider } from '../src/contexts/WorkoutsContext';
+import { CollectionsProvider } from '../src/contexts/CollectionsContext';
+import { PurchasesProvider } from '../src/contexts/PurchasesContext';
 import { getPendingRedirect, setPendingRedirect, clearPendingRedirect } from '../src/utils/pendingRedirect';
 import { normalizeShareUrl } from '../src/utils/url';
 import { shouldHandleLegacyShare } from '../src/utils/shareGate';
@@ -144,9 +146,13 @@ export default function RootLayout() {
 
   return (
     <ShareIntentProvider>
-      <WorkoutsProvider>
-        <RootStack session={session} />
-      </WorkoutsProvider>
+      <PurchasesProvider userId={session?.user?.id ?? null}>
+        <WorkoutsProvider>
+          <CollectionsProvider>
+            <RootStack session={session} />
+          </CollectionsProvider>
+        </WorkoutsProvider>
+      </PurchasesProvider>
     </ShareIntentProvider>
   );
 }

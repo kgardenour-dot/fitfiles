@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { WorkoutLinkWithTags } from '../types/database';
 import { Colors, Spacing, FontSize, BorderRadius } from '../constants/theme';
 import { Chip } from './Chip';
+import { useWorkouts } from '../contexts/WorkoutsContext';
+import { fetchUrlMetadata } from '../lib/og-scraper';
+import { thumbnailImageSource } from '../lib/thumbnail-image';
 
 interface Props {
   workout: WorkoutLinkWithTags;
@@ -12,21 +15,53 @@ interface Props {
 }
 
 export function WorkoutCard({ workout, onPress, onFavorite }: Props) {
+  const { updateWorkout } = useWorkouts();
   const [hasThumbnailError, setHasThumbnailError] = useState(false);
+  const [resolvedThumb, setResolvedThumb] = useState<string | null>(null);
+  const refreshAttemptedRef = useRef(false);
+
+  const displayThumb = resolvedThumb ?? workout.thumbnail_url;
 
   useEffect(() => {
     setHasThumbnailError(false);
+    setResolvedThumb(null);
+    refreshAttemptedRef.current = false;
   }, [workout.id, workout.thumbnail_url]);
 
-  const showThumbnail = Boolean(workout.thumbnail_url) && !hasThumbnailError;
+  const showThumbnail = Boolean(displayThumb) && !hasThumbnailError;
+
+  const thumbSource = displayThumb ? thumbnailImageSource(displayThumb) : null;
+
+  const handleThumbnailError = () => {
+    if (!refreshAttemptedRef.current && workout.url?.trim()) {
+      refreshAttemptedRef.current = true;
+      void (async () => {
+        try {
+          const meta = await fetchUrlMetadata(workout.url);
+          const next = meta.thumbnail_url;
+          if (next && next !== displayThumb) {
+            setResolvedThumb(next);
+            await updateWorkout(workout.id, { thumbnail_url: next });
+            setHasThumbnailError(false);
+            return;
+          }
+        } catch {
+          // fall through to placeholder
+        }
+        setHasThumbnailError(true);
+      })();
+      return;
+    }
+    setHasThumbnailError(true);
+  };
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      {showThumbnail ? (
+      {showThumbnail && thumbSource ? (
         <Image
-          source={{ uri: workout.thumbnail_url! }}
+          source={thumbSource}
           style={styles.thumbnail}
-          onError={() => setHasThumbnailError(true)}
+          onError={handleThumbnailError}
         />
       ) : (
         <View style={[styles.thumbnail, styles.placeholderThumb]}>

@@ -95,7 +95,7 @@ export default function LoginScreen() {
         <Link href="/(auth)/signup" asChild>
           <TouchableOpacity style={styles.linkBtn}>
             <Text style={styles.linkText}>
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Text style={styles.linkTextBold}>Sign Up</Text>
             </Text>
           </TouchableOpacity>

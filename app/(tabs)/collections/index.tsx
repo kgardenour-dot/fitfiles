@@ -13,6 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
@@ -49,9 +50,11 @@ export default function CollectionsScreen() {
   const [tutorialChecked, setTutorialChecked] = useState(false);
   const listRef = useRef<FlatList>(null);
 
-  useEffect(() => {
-    fetchCollections();
-  }, [fetchCollections]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchCollections();
+    }, [fetchCollections]),
+  );
 
   useEffect(() => {
     if (tutorialChecked || loading) return;
@@ -99,7 +102,6 @@ export default function CollectionsScreen() {
       await createCollection(name);
       setNewName('');
       setShowCreate(false);
-      await fetchCollections();
       listRef.current?.scrollToOffset({ offset: 0, animated: true });
     } catch (err: unknown) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Could not create collection');
@@ -116,7 +118,6 @@ export default function CollectionsScreen() {
         style: 'destructive',
         onPress: async () => {
           await deleteCollection(id);
-          fetchCollections();
         },
       },
     ]);

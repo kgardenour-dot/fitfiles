@@ -559,6 +559,7 @@ export default function ImportScreen() {
             .from('collection_items')
             .upsert(rows, { onConflict: 'collection_id,workout_link_id', ignoreDuplicates: true });
           if (error) throw error;
+          await fetchCollections();
         } catch (collErr: unknown) {
           const isSupabase = collErr && typeof collErr === 'object' && 'code' in collErr;
           const errMsg = isSupabase

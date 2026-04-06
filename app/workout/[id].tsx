@@ -15,6 +15,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../../src/lib/supabase';
+import { fetchUrlMetadata } from '../../src/lib/og-scraper';
+import { thumbnailImageSource } from '../../src/lib/thumbnail-image';
 import { useWorkouts } from '../../src/hooks/useWorkouts';
 import { useCollections } from '../../src/hooks/useCollections';
 import { WorkoutLinkWithTags } from '../../src/types/database';
@@ -25,7 +27,8 @@ import { ConfettiDots } from '../../src/components/ConfettiDots';
 export default function WorkoutDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { toggleFavorite, markOpened, markDone, deleteWorkout, removeWorkoutLink } = useWorkouts();
+  const { toggleFavorite, markOpened, markDone, deleteWorkout, removeWorkoutLink, updateWorkout } =
+    useWorkouts();
   const { collections, fetchCollections, addToCollection, removeFromCollection } = useCollections();
 
   const lastOpenedWriteRef = useRef<string | null>(null);
@@ -61,6 +64,9 @@ export default function WorkoutDetailScreen() {
   const [workout, setWorkout] = useState<WorkoutLinkWithTags | null>(null);
   const [loading, setLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [resolvedThumb, setResolvedThumb] = useState<string | null>(null);
+  const [thumbLoadFailed, setThumbLoadFailed] = useState(false);
+  const thumbRefreshAttemptedRef = useRef(false);
   const [showCollections, setShowCollections] = useState(false);
   const [workoutCollectionIds, setWorkoutCollectionIds] = useState<Set<string>>(new Set());
 
@@ -79,6 +85,9 @@ export default function WorkoutDetailScreen() {
     const tags = (data.workout_link_tags ?? []).map((wlt: any) => wlt.tags).filter(Boolean);
     const { workout_link_tags: _, ...rest } = data;
     setWorkout({ ...rest, tags } as WorkoutLinkWithTags);
+    setResolvedThumb(null);
+    setThumbLoadFailed(false);
+    thumbRefreshAttemptedRef.current = false;
     setLoading(false);
   }, [id, router]);
 
@@ -160,6 +169,34 @@ export default function WorkoutDetailScreen() {
     }
   };
 
+  const displayThumbDetail = resolvedThumb ?? workout.thumbnail_url;
+  const detailThumbSource = displayThumbDetail ? thumbnailImageSource(displayThumbDetail) : null;
+
+  const handleDetailThumbError = () => {
+    if (!thumbRefreshAttemptedRef.current && workout.url?.trim()) {
+      thumbRefreshAttemptedRef.current = true;
+      void (async () => {
+        try {
+          const meta = await fetchUrlMetadata(workout.url);
+          const next = meta.thumbnail_url;
+          const prev = resolvedThumb ?? workout.thumbnail_url;
+          if (next && next !== prev) {
+            setResolvedThumb(next);
+            await updateWorkout(workout.id, { thumbnail_url: next });
+            setWorkout((prevW) => (prevW ? { ...prevW, thumbnail_url: next } : prevW));
+            setThumbLoadFailed(false);
+            return;
+          }
+        } catch {
+          // fall through
+        }
+        setThumbLoadFailed(true);
+      })();
+      return;
+    }
+    setThumbLoadFailed(true);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ConfettiDots />
@@ -184,8 +221,8 @@ export default function WorkoutDetailScreen() {
 
       <ScrollView style={styles.body}>
         {/* Thumbnail */}
-        {workout.thumbnail_url ? (
-          <Image source={{ uri: workout.thumbnail_url }} style={styles.thumbnail} />
+        {detailThumbSource && !thumbLoadFailed ? (
+          <Image source={detailThumbSource} style={styles.thumbnail} onError={handleDetailThumbError} />
         ) : (
           <View style={[styles.thumbnail, styles.placeholderThumb]}>
             <Ionicons name="barbell-outline" size={48} color={Colors.textMuted} />

@@ -11,6 +11,8 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +23,7 @@ import { useAuth } from '../src/hooks/useAuth';
 import { useEntitlements } from '../src/hooks/useEntitlements';
 import { TagSelector } from '../src/components/TagSelector';
 import { fetchOGMetadata, extractDomain } from '../src/lib/og-scraper';
+import { thumbnailImageSource } from '../src/lib/thumbnail-image';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/constants/theme';
 import { TagType } from '../src/types/database';
 import { DEFAULT_TAGS } from '../src/constants/tags';
@@ -41,6 +44,9 @@ export default function SaveScreen() {
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
   const [previewing, setPreviewing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [helpVisible, setHelpVisible] = useState(false);
+
+  const helpScrollMaxHeight = Dimensions.get('window').height * 0.72;
 
   useEffect(() => {
     fetchTags();
@@ -152,7 +158,17 @@ export default function SaveScreen() {
             <Ionicons name="close" size={28} color={Colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Save Workout</Text>
-          <View style={{ width: 28 }} />
+          <TouchableOpacity
+            style={styles.headerHelpPill}
+            onPress={() => setHelpVisible(true)}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+            accessibilityRole="button"
+            accessibilityLabel="Help"
+            activeOpacity={0.85}
+          >
+            <Ionicons name="help-circle-outline" size={20} color={Colors.aquaMint} />
+            <Text style={styles.headerHelpText}>Help</Text>
+          </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
@@ -184,7 +200,7 @@ export default function SaveScreen() {
 
           {/* Thumbnail preview */}
           {thumbnailUrl ? (
-            <Image source={{ uri: thumbnailUrl }} style={styles.thumbPreview} />
+            <Image source={thumbnailImageSource(thumbnailUrl)} style={styles.thumbPreview} />
           ) : null}
 
           {/* Title */}
@@ -242,6 +258,64 @@ export default function SaveScreen() {
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={helpVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setHelpVisible(false)}
+      >
+        <View style={styles.helpOverlay}>
+          <View style={styles.helpCard}>
+            <Text style={styles.helpTitle}>How to save links</Text>
+            <ScrollView
+              style={{ maxHeight: helpScrollMaxHeight }}
+              showsVerticalScrollIndicator
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={styles.helpSectionLabel}>Share from another app (fastest)</Text>
+              <Text style={styles.helpBody}>
+                Open the video or page in YouTube, TikTok, Instagram, Facebook, and many other apps.
+                Use Share, then choose FitLinks. The link is sent into the app so you can confirm details and
+                save.
+              </Text>
+              <Text style={styles.helpSectionLabel}>Don't see FitLinks in the short list?</Text>
+              <Text style={styles.helpBody}>
+                Swipe sideways on the row of app icons—FitLinks is often past the first few. On iPhone or iPad,
+                tap Edit or ••• on the share sheet to turn FitLinks on, or drag it into Favorites so it stays
+                easy to find. On Android, open More or the full app list if you don't see it at first. You can
+                also copy the link and paste it on this screen instead.
+              </Text>
+              <Text style={styles.helpSectionLabel}>Paste or type a URL here</Text>
+              <Text style={styles.helpBody}>
+                Tap + on the home screen to open this screen. Paste a link from your clipboard or type it.
+                If you skip https://, we add it when you preview or save.
+              </Text>
+              <Text style={styles.helpSectionLabel}>Preview</Text>
+              <Text style={styles.helpBody}>
+                Tap Preview to fetch the page title and thumbnail when the site exposes them. You can still edit
+                the title before saving.
+              </Text>
+              <Text style={styles.helpSectionLabel}>Details & tags</Text>
+              <Text style={styles.helpBody}>
+                Add duration and notes if you like. Pick a few tags (often 1–3) so search and browsing stay
+                easy later.
+              </Text>
+              <Text style={styles.helpSectionLabel}>Saving the same link again</Text>
+              <Text style={[styles.helpBody, styles.helpBodyLast]}>
+                If you save a URL you already have, we update that workout instead of creating a duplicate.
+              </Text>
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.helpDismissBtn}
+              onPress={() => setHelpVisible(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.helpDismissBtnText}>Got it</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -261,6 +335,75 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: Colors.text,
     fontSize: FontSize.lg,
+    fontWeight: '700',
+  },
+  headerHelpPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.surfaceLight,
+    borderWidth: 1.5,
+    borderColor: Colors.aquaMint,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 7,
+    borderRadius: BorderRadius.full,
+    shadowColor: Colors.aquaMint,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.22,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  headerHelpText: {
+    color: Colors.aquaMint,
+    fontSize: FontSize.md,
+    fontWeight: '700',
+  },
+  helpOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(11, 18, 32, 0.75)',
+    justifyContent: 'center',
+    padding: Spacing.lg,
+  },
+  helpCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: Spacing.lg,
+  },
+  helpTitle: {
+    color: Colors.text,
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    marginBottom: Spacing.md,
+  },
+  helpSectionLabel: {
+    color: Colors.text,
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    marginBottom: Spacing.xs,
+    marginTop: Spacing.sm,
+  },
+  helpBody: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+    marginBottom: Spacing.sm,
+  },
+  helpBodyLast: {
+    marginBottom: 0,
+  },
+  helpDismissBtn: {
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.md,
+    backgroundColor: Colors.coralPulse,
+    borderRadius: BorderRadius.md,
+  },
+  helpDismissBtnText: {
+    color: '#FFFFFF',
+    fontSize: FontSize.md,
     fontWeight: '700',
   },
   form: {

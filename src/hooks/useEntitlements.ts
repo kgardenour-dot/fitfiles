@@ -2,13 +2,18 @@ import { useMemo } from 'react';
 import { UserProfile } from '../types/database';
 import { PLAN_LIMITS } from '../constants/limits';
 import { BETA_DISABLE_PAYWALL } from '../config/flags';
+import { usePurchases } from '../contexts/PurchasesContext';
 
 export function useEntitlements(profile: UserProfile | null) {
-  const tier = BETA_DISABLE_PAYWALL ? 'pro' : (profile?.plan_tier ?? 'free');
+  const { hasPro: revenueCatPro } = usePurchases();
+  const tier = BETA_DISABLE_PAYWALL
+    ? 'pro'
+    : revenueCatPro
+      ? 'pro'
+      : (profile?.plan_tier ?? 'free');
   const limits = PLAN_LIMITS[tier];
 
   const isPro = tier === 'pro';
-  const isPlus = tier === 'plus';
 
   const canSaveWorkout = useMemo(
     () => (currentCount: number) => currentCount < limits.maxWorkouts,
@@ -20,5 +25,5 @@ export function useEntitlements(profile: UserProfile | null) {
     [limits.maxCollections],
   );
 
-  return { tier, isPro, isPlus, limits, canSaveWorkout, canCreateCollection };
+  return { tier, isPro, limits, canSaveWorkout, canCreateCollection };
 }

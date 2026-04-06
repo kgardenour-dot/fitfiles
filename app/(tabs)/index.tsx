@@ -63,10 +63,25 @@ function normalizeSearchResults(data: unknown): WorkoutLinkWithTags[] {
 
   return data.map((item) => {
     const row = (item ?? {}) as Record<string, unknown>;
-    const tags = Array.isArray(row.tags) ? row.tags : [];
+    const tags = (Array.isArray(row.tags) ? row.tags : []).filter(
+      (tag): tag is WorkoutLinkWithTags['tags'][number] => Boolean(tag && typeof tag === 'object'),
+    );
     return {
-      ...(row as WorkoutLinkWithTags),
-      tags: tags as WorkoutLinkWithTags['tags'],
+      id: typeof row.id === 'string' ? row.id : '',
+      user_id: typeof row.user_id === 'string' ? row.user_id : '',
+      url: typeof row.url === 'string' ? row.url : '',
+      title: typeof row.title === 'string' ? row.title : '',
+      source_domain: typeof row.source_domain === 'string' ? row.source_domain : '',
+      thumbnail_url: typeof row.thumbnail_url === 'string' ? row.thumbnail_url : null,
+      notes: typeof row.notes === 'string' ? row.notes : null,
+      duration_minutes:
+        typeof row.duration_minutes === 'number' ? row.duration_minutes : null,
+      is_favorite: Boolean(row.is_favorite),
+      created_at: typeof row.created_at === 'string' ? row.created_at : '',
+      updated_at: typeof row.updated_at === 'string' ? row.updated_at : '',
+      last_opened_at:
+        typeof row.last_opened_at === 'string' ? row.last_opened_at : null,
+      tags,
     };
   });
 }
@@ -217,7 +232,6 @@ export default function LibraryScreen() {
             >
               <Text
                 style={[styles.sortChipLabel, isSelected && styles.sortChipLabelActive]}
-                includeFontPadding={false}
               >
                 {opt.label}
               </Text>
@@ -275,13 +289,15 @@ export default function LibraryScreen() {
           <View style={styles.tutorialCard}>
             <Text style={styles.tutorialTitle}>How to save links</Text>
             <Text style={styles.tutorialBody}>
-              Tap the + button in the top-right, paste your workout URL, then hit Save Workout.
+              The easiest way is to share straight from the app you're watching: open the video or post in
+              YouTube, TikTok, Facebook, Instagram, and many others, tap Share, then choose FitLinks. The link
+              imports in one step.
+            </Text>
+            <Text style={styles.tutorialBody}>
+              Prefer to paste instead? Tap + in the top-right, paste your workout URL, then Save Workout.
             </Text>
             <Text style={styles.tutorialBody}>
               Add a few tags when saving (like Strength, HIIT, Mobility) so searches return faster.
-            </Text>
-            <Text style={styles.tutorialBody}>
-              You can also share from apps like YouTube/Safari and choose FitLinks to import instantly.
             </Text>
 
             <TouchableOpacity

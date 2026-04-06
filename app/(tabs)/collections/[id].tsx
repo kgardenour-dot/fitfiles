@@ -64,16 +64,26 @@ export default function CollectionDetailScreen() {
     if (error) {
       setWorkouts([]);
     } else {
-      const items =
-        (data ?? []).map((row: { workout_links: Record<string, unknown> }) => {
-          const wl = row.workout_links;
-          if (!wl) return null;
-          const tags = ((wl as Record<string, unknown>).workout_link_tags ?? []).map(
-            (wlt: { tags?: unknown }) => (wlt as { tags?: unknown }).tags,
-          ).filter(Boolean);
-          const { workout_link_tags: _, ...rest } = wl as Record<string, unknown>;
-          return { ...rest, tags };
-        }).filter(Boolean) as WorkoutLinkWithTags[];
+      const items = (data ?? [])
+        .map((row) => {
+          const relation = (row as { workout_links?: unknown }).workout_links;
+          const wl = Array.isArray(relation) ? relation[0] : relation;
+          if (!wl || typeof wl !== 'object') return null;
+
+          const wlRecord = wl as Record<string, unknown>;
+          const rawTagLinks = Array.isArray(wlRecord.workout_link_tags)
+            ? wlRecord.workout_link_tags
+            : [];
+          const tags = rawTagLinks.flatMap((wlt) => {
+            const linked = (wlt as { tags?: unknown }).tags;
+            if (Array.isArray(linked)) return linked;
+            return linked ? [linked] : [];
+          }) as WorkoutLinkWithTags['tags'];
+
+          const { workout_link_tags: _, ...rest } = wlRecord;
+          return { ...rest, tags } as WorkoutLinkWithTags;
+        })
+        .filter((item): item is WorkoutLinkWithTags => Boolean(item));
       // Sort by created_at descending
       items.sort(
         (a, b) =>

@@ -1,23 +1,53 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Image } from 'react-native';
+import { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Image,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useEntitlements } from '../../src/hooks/useEntitlements';
+import { usePurchases } from '../../src/contexts/PurchasesContext';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
-import { PLAN_LIMITS } from '../../src/constants/limits';
 import { ConfettiDots } from '../../src/components/ConfettiDots';
+import { openManageSubscriptions } from '../../src/utils/subscriptions';
+import { hasProEntitlement } from '../../src/config/revenuecat';
+
+const isNativeMobile = Platform.OS === 'ios' || Platform.OS === 'android';
 
 export default function ProfileScreen() {
   const router = useRouter();
   const { user, profile, signOut } = useAuth();
   const { tier, isPro, limits } = useEntitlements(profile);
+  const { hasApiKey, restorePurchases } = usePurchases();
+  const [restoring, setRestoring] = useState(false);
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: signOut },
     ]);
+  };
+
+  const handleRestore = async () => {
+    setRestoring(true);
+    try {
+      const info = await restorePurchases();
+      if (info && hasProEntitlement(info)) {
+        Alert.alert('Restored', 'Your purchases were restored.');
+      } else {
+        Alert.alert('No purchases found', 'There is nothing to restore for this account.');
+      }
+    } finally {
+      setRestoring(false);
+    }
   };
 
   return (
@@ -66,6 +96,31 @@ export default function ProfileScreen() {
           <Text style={styles.upgradeBtnText}>Upgrade Plan</Text>
         </TouchableOpacity>
       )}
+
+      {isPro && hasApiKey && isNativeMobile ? (
+        <TouchableOpacity style={styles.secondaryBtn} onPress={openManageSubscriptions} activeOpacity={0.8}>
+          <Ionicons name="open-outline" size={20} color={Colors.aquaMint} />
+          <Text style={styles.secondaryBtnText}>Manage subscription</Text>
+        </TouchableOpacity>
+      ) : null}
+
+      {hasApiKey && isNativeMobile ? (
+        <TouchableOpacity
+          style={styles.secondaryBtn}
+          onPress={handleRestore}
+          disabled={restoring}
+          activeOpacity={0.8}
+        >
+          {restoring ? (
+            <ActivityIndicator color={Colors.aquaMint} />
+          ) : (
+            <>
+              <Ionicons name="refresh-outline" size={20} color={Colors.aquaMint} />
+              <Text style={styles.secondaryBtnText}>Restore purchases</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      ) : null}
 
       {/* Sign Out */}
       <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
@@ -189,6 +244,24 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: FontSize.md,
     fontWeight: '700',
+  },
+  secondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.lg,
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.sm,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  secondaryBtnText: {
+    color: Colors.aquaMint,
+    fontSize: FontSize.md,
+    fontWeight: '600',
   },
   signOutBtn: {
     flexDirection: 'row',
