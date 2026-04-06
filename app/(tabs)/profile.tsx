@@ -24,16 +24,44 @@ const isNativeMobile = Platform.OS === 'ios' || Platform.OS === 'android';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, deleteAccount } = useAuth();
   const { tier, isPro, limits } = useEntitlements(profile);
   const { hasApiKey, restorePurchases } = usePurchases();
   const [restoring, setRestoring] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign Out', style: 'destructive', onPress: signOut },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete your account?',
+      'Your saved workouts, collections, and profile will be permanently deleted. This cannot be undone.\n\nSubscriptions billed through Apple or Google are managed in your store account—cancel there if you do not want to be charged again.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: () => void runDeleteAccount(),
+        },
+      ],
+    );
+  };
+
+  const runDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      const err = await deleteAccount();
+      if (err) {
+        Alert.alert('Could not delete account', err.message ?? 'Please try again in a moment.');
+      }
+    } finally {
+      setDeletingAccount(false);
+    }
   };
 
   const handleRestore = async () => {
@@ -121,6 +149,25 @@ export default function ProfileScreen() {
           )}
         </TouchableOpacity>
       ) : null}
+
+      <View style={styles.dangerSection}>
+        <Text style={styles.dangerTitle}>Account</Text>
+        <TouchableOpacity
+          style={styles.deleteBtn}
+          onPress={handleDeleteAccount}
+          disabled={deletingAccount}
+          activeOpacity={0.85}
+        >
+          {deletingAccount ? (
+            <ActivityIndicator color={Colors.textMuted} />
+          ) : (
+            <>
+              <Ionicons name="trash-outline" size={20} color={Colors.textMuted} />
+              <Text style={styles.deleteBtnText}>Delete account</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
 
       {/* Sign Out */}
       <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
@@ -260,6 +307,33 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: {
     color: Colors.aquaMint,
+    fontSize: FontSize.md,
+    fontWeight: '600',
+  },
+  dangerSection: {
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  dangerTitle: {
+    color: Colors.textMuted,
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    marginBottom: Spacing.sm,
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.xs,
+  },
+  deleteBtnText: {
+    color: Colors.textMuted,
     fontSize: FontSize.md,
     fontWeight: '600',
   },

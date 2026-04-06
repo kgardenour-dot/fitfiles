@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -25,23 +25,32 @@ import { useEntitlements } from '../src/hooks/useEntitlements';
 import { usePurchases } from '../src/contexts/PurchasesContext';
 import { openManageSubscriptions } from '../src/utils/subscriptions';
 import { hasProEntitlement } from '../src/config/revenuecat';
-import { packageBillingLabel } from '../src/utils/revenuecat-ui';
+import {
+  packageBillingLabel,
+  packageDisplayTitle,
+  sortPaywallPackages,
+  isAnnualPackage,
+} from '../src/utils/revenuecat-ui';
+
+const PRO_FEATURES = [
+  'Unlimited saved workouts',
+  'Unlimited collections',
+  'Priority support',
+  'Early access to new features',
+] as const;
 
 export default function UpgradeScreen() {
   const router = useRouter();
   const { profile } = useAuth();
   const { isPro } = useEntitlements(profile);
-  const {
-    hasApiKey,
-    getOfferings,
-    purchasePackage,
-    restorePurchases,
-  } = usePurchases();
+  const { hasApiKey, getOfferings, purchasePackage, restorePurchases } = usePurchases();
 
   const [loadingOfferings, setLoadingOfferings] = useState(true);
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [purchasingId, setPurchasingId] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(false);
+
+  const sortedPackages = useMemo(() => sortPaywallPackages(packages), [packages]);
 
   const loadOfferings = useCallback(async () => {
     if (!hasApiKey) {
@@ -84,154 +93,191 @@ export default function UpgradeScreen() {
     try {
       const info = await restorePurchases();
       if (info && hasProEntitlement(info)) {
-        Alert.alert('Restored', 'Your purchases were restored.');
+        Alert.alert('Welcome back', 'Your Pro subscription is active again.');
         router.back();
       } else {
-        Alert.alert('No purchases found', 'There is nothing to restore for this account.');
+        Alert.alert('No subscription found', 'We could not find an active subscription for this account.');
       }
     } finally {
       setRestoring(false);
     }
   };
 
-  const openManage = () => {
-    openManageSubscriptions();
-  };
+  const showDevConfigHint = !hasApiKey && __DEV__;
+  const showUserFacingConfigIssue = !hasApiKey && !__DEV__;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ConfettiDots />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Close">
-          <Ionicons name="close" size={28} color={Colors.text} />
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.topBarBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+          hitSlop={12}
+        >
+          <Ionicons name="close" size={26} color={Colors.text} />
         </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-        <Ionicons name="rocket" size={56} color={Colors.primary} />
-        <Text style={styles.title}>Upgrade to Pro</Text>
-        <Text style={styles.subtitle}>Unlock unlimited workouts and collections</Text>
-
-        {isPro ? (
-          <View style={styles.proBanner}>
-            <Ionicons name="checkmark-circle" size={28} color={Colors.success} />
-            <Text style={styles.proBannerText}>You have an active Pro subscription.</Text>
-            <TouchableOpacity style={styles.secondaryBtn} onPress={openManage} activeOpacity={0.8}>
-              <Text style={styles.secondaryBtnText}>Manage subscription</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null}
-
-        {/* Free tier */}
-        <View style={styles.planCard}>
-          <View style={styles.planHeader}>
-            <Text style={styles.planName}>Free</Text>
-            {!isPro ? (
-              <View style={styles.planBadge}>
-                <Text style={styles.planBadgeText}>CURRENT</Text>
-              </View>
-            ) : null}
-          </View>
-          <Text style={styles.planLimits}>
-            {PLAN_LIMITS.free.maxWorkouts} workouts · {PLAN_LIMITS.free.maxCollections} collections
-          </Text>
-          <View style={styles.features}>
-            {[
-              `${PLAN_LIMITS.free.maxWorkouts} saved workouts`,
-              `${PLAN_LIMITS.free.maxCollections} collections`,
-              'All core features',
-            ].map((f) => (
-              <View key={f} style={styles.featureRow}>
-                <Ionicons name="checkmark-circle" size={20} color={Colors.textMuted} />
-                <Text style={styles.featureText}>{f}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-
-        {/* Pro — RevenueCat packages */}
-        <View style={[styles.planCard, styles.planCardPro]}>
-          <View style={styles.planHeader}>
-            <Text style={styles.planName}>Pro</Text>
-            {isPro ? (
-              <View style={[styles.planBadge, styles.planBadgePro]}>
-                <Text style={styles.planBadgeText}>ACTIVE</Text>
-              </View>
-            ) : null}
-          </View>
-          <Text style={styles.planLimits}>Unlimited workouts · Unlimited collections</Text>
-          <View style={styles.features}>
-            {[
-              'Unlimited saved workouts',
-              'Unlimited collections',
-              'Priority support',
-              'Early access to new features',
-            ].map((f) => (
-              <View key={f} style={styles.featureRow}>
-                <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
-                <Text style={styles.featureText}>{f}</Text>
-              </View>
-            ))}
-          </View>
-
-          {!hasApiKey ? (
-            <Text style={styles.configHint}>
-              Add RevenueCat API keys in your environment (EXPO_PUBLIC_REVENUECAT_IOS_API_KEY /
-              EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY) and rebuild the native app.
-            </Text>
-          ) : loadingOfferings ? (
-            <ActivityIndicator style={styles.loader} color={Colors.coralPulse} />
-          ) : packages.length === 0 ? (
-            <Text style={styles.configHint}>
-              No subscription products yet. In RevenueCat, attach products to your offering and ensure the App Store /
-              Play Console product IDs match.
-            </Text>
-          ) : (
-            packages.map((pkg) => {
-              const product = pkg.product;
-              const price = product.priceString;
-              const period = packageBillingLabel(pkg);
-              const busy = purchasingId === pkg.identifier;
-              return (
-                <TouchableOpacity
-                  key={pkg.identifier}
-                  style={[styles.planBtn, styles.planBtnPro, busy && styles.planBtnDisabled]}
-                  onPress={() => onPurchase(pkg)}
-                  disabled={busy || isPro}
-                  activeOpacity={0.85}
-                >
-                  {busy ? (
-                    <ActivityIndicator color="#FFFFFF" />
-                  ) : (
-                    <Text style={styles.planBtnText}>
-                      Subscribe — {price}
-                      {period ? ` ${period}` : ''}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              );
-            })
-          )}
-        </View>
-
         {hasApiKey && Platform.OS !== 'web' ? (
           <TouchableOpacity
-            style={styles.restoreBtn}
             onPress={onRestore}
             disabled={restoring}
-            activeOpacity={0.8}
+            style={styles.topBarBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Restore purchases"
           >
             {restoring ? (
-              <ActivityIndicator color={Colors.textSecondary} />
+              <ActivityIndicator size="small" color={Colors.aquaMint} />
             ) : (
-              <Text style={styles.restoreText}>Restore purchases</Text>
+              <Text style={styles.restoreLink}>Restore</Text>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.topBarSpacer} />
+        )}
+      </View>
+
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.body}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {isPro ? (
+          <View style={styles.heroPro}>
+            <View style={styles.heroIconWrap}>
+              <Ionicons name="checkmark-circle" size={40} color={Colors.success} />
+            </View>
+            <Text style={styles.heroTitle}>You are on Pro</Text>
+            <Text style={styles.heroSubtitle}>
+              Thank you for supporting FitLinks. Manage billing or cancel anytime in your store account.
+            </Text>
+            <TouchableOpacity style={styles.manageCta} onPress={openManageSubscriptions} activeOpacity={0.85}>
+              <Text style={styles.manageCtaText}>Manage subscription</Text>
+              <Ionicons name="open-outline" size={18} color="#0B1220" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.hero}>
+            <View style={styles.heroGlow} />
+            <View style={styles.heroIconWrap}>
+              <Ionicons name="sparkles" size={32} color={Colors.coralPulse} />
+            </View>
+            <Text style={styles.heroKicker}>FITLINKS PRO</Text>
+            <Text style={styles.heroTitle}>Train without limits</Text>
+            <Text style={styles.heroSubtitle}>
+              Save every workout link, organize in collections, and grow your library as much as you want.
+            </Text>
+          </View>
+        )}
+
+        {!isPro ? (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>What you get</Text>
+              {PRO_FEATURES.map((line) => (
+                <View key={line} style={styles.benefitRow}>
+                  <View style={styles.benefitIcon}>
+                    <Ionicons name="checkmark" size={16} color="#0B1220" />
+                  </View>
+                  <Text style={styles.benefitText}>{line}</Text>
+                </View>
+              ))}
+            </View>
+
+            <Text style={styles.freeFootnote}>
+              Free during beta: {PLAN_LIMITS.free.maxWorkouts} workouts and {PLAN_LIMITS.free.maxCollections}{' '}
+              collections. Upgrade removes these caps.
+            </Text>
+
+            <Text style={styles.pickPlanTitle}>Choose your plan</Text>
+
+            {showDevConfigHint ? (
+              <Text style={styles.configHint}>
+                Development: set EXPO_PUBLIC_REVENUECAT_IOS_API_KEY and EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY, then
+                rebuild the native app.
+              </Text>
+            ) : null}
+            {showUserFacingConfigIssue ? (
+              <Text style={styles.configHint}>Subscriptions are temporarily unavailable. Please try again later.</Text>
+            ) : null}
+
+            {hasApiKey && loadingOfferings ? (
+              <View style={styles.loadingPlans}>
+                <ActivityIndicator size="large" color={Colors.coralPulse} />
+                <Text style={styles.loadingPlansText}>Loading plans…</Text>
+              </View>
+            ) : null}
+
+            {hasApiKey && !loadingOfferings && sortedPackages.length === 0 ? (
+              <Text style={styles.configHint}>
+                No plans to show yet. Ask the team to attach subscription products to the current offering in RevenueCat.
+              </Text>
+            ) : null}
+
+            {hasApiKey && !loadingOfferings && sortedPackages.length > 0
+              ? sortedPackages.map((pkg) => {
+                  const product = pkg.product;
+                  const title = packageDisplayTitle(pkg);
+                  const period = packageBillingLabel(pkg);
+                  const annual = isAnnualPackage(pkg);
+                  const busy = purchasingId === pkg.identifier;
+                  const intro = product.introPrice;
+
+                  return (
+                    <View key={pkg.identifier} style={[styles.planCard, annual && styles.planCardFeatured]}>
+                      {annual ? (
+                        <View style={styles.bestValuePill}>
+                          <Text style={styles.bestValueText}>Best value</Text>
+                        </View>
+                      ) : null}
+                      <View style={styles.planCardHeader}>
+                        <Text style={styles.planCardTitle}>{title}</Text>
+                        <Text style={styles.planCardPrice}>{product.priceString}</Text>
+                        {period ? <Text style={styles.planCardPeriod}>{period}</Text> : null}
+                      </View>
+                      {intro ? (
+                        <Text style={styles.introLine}>Intro offer · {intro.priceString}</Text>
+                      ) : null}
+                      <TouchableOpacity
+                        style={[styles.subscribeBtn, busy && styles.subscribeBtnBusy]}
+                        onPress={() => onPurchase(pkg)}
+                        disabled={busy}
+                        activeOpacity={0.9}
+                        accessibilityLabel={`Subscribe to ${title} for ${product.priceString}`}
+                      >
+                        {busy ? (
+                          <ActivityIndicator color="#FFFFFF" />
+                        ) : (
+                          <Text style={styles.subscribeBtnText}>Continue with {title}</Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  );
+                })
+              : null}
+          </>
+        ) : null}
+
+        <View style={styles.legalBlock}>
+          <Text style={styles.legalTitle}>Subscription details</Text>
+          <Text style={styles.legalText}>
+            Payment is charged to your {Platform.OS === 'android' ? 'Google Play' : 'Apple'} account. Subscription
+            renews automatically until you cancel. Cancel at least 24 hours before renewal to avoid being charged again.
+            Manage or cancel in your account settings.
+          </Text>
+        </View>
+
+        {hasApiKey && Platform.OS !== 'web' && !isPro ? (
+          <TouchableOpacity style={styles.restoreFooter} onPress={onRestore} disabled={restoring} activeOpacity={0.8}>
+            {restoring ? (
+              <ActivityIndicator color={Colors.textMuted} />
+            ) : (
+              <Text style={styles.restoreFooterText}>Already purchased? Restore</Text>
             )}
           </TouchableOpacity>
         ) : null}
-
-        <Text style={styles.note}>
-          Subscriptions renew automatically unless cancelled. Manage or cancel in your {Platform.OS === 'android' ? 'Google Play' : 'Apple'} account settings.
-        </Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -242,9 +288,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  header: {
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    paddingBottom: Spacing.sm,
+  },
+  topBarBtn: {
+    minWidth: 72,
+    paddingVertical: Spacing.xs,
+  },
+  topBarSpacer: {
+    width: 72,
+  },
+  restoreLink: {
+    color: Colors.aquaMint,
+    fontSize: FontSize.md,
+    fontWeight: '600',
+    textAlign: 'right',
   },
   scroll: {
     flex: 1,
@@ -253,141 +315,235 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingBottom: Spacing.xl,
   },
-  title: {
-    color: Colors.text,
-    fontSize: FontSize.xxl,
-    fontWeight: '800',
-    marginTop: Spacing.md,
-    textAlign: 'center',
+  hero: {
+    position: 'relative',
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    marginBottom: Spacing.lg,
+    backgroundColor: Colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: Colors.sunriseYellow + '35',
+    overflow: 'hidden',
   },
-  subtitle: {
+  heroGlow: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: Colors.coralPulse + '08',
+  },
+  heroIconWrap: {
+    alignSelf: 'center',
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.coralPulse + '18',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.md,
+  },
+  heroKicker: {
+    color: Colors.sunriseYellow,
+    fontSize: FontSize.xs,
+    fontWeight: '800',
+    letterSpacing: 2,
+    textAlign: 'center',
+    marginBottom: Spacing.sm,
+  },
+  heroTitle: {
+    color: Colors.text,
+    fontSize: FontSize.hero,
+    fontWeight: '800',
+    textAlign: 'center',
+    lineHeight: 40,
+  },
+  heroSubtitle: {
     color: Colors.textSecondary,
     fontSize: FontSize.md,
-    marginTop: Spacing.xs,
     textAlign: 'center',
-    marginBottom: Spacing.xl,
+    marginTop: Spacing.md,
+    lineHeight: 22,
   },
-  proBanner: {
-    backgroundColor: Colors.card,
-    borderRadius: BorderRadius.lg,
+  heroPro: {
+    borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.lg,
+    backgroundColor: Colors.surfaceLight,
+    borderWidth: 1,
+    borderColor: Colors.success + '40',
+    alignItems: 'center',
+  },
+  manageCta: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.success + '50',
+    marginTop: Spacing.lg,
+    backgroundColor: Colors.aquaMint,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.lg,
   },
-  proBannerText: {
+  manageCtaText: {
+    color: '#0B1220',
+    fontSize: FontSize.md,
+    fontWeight: '800',
+  },
+  section: {
+    marginBottom: Spacing.lg,
+  },
+  sectionTitle: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: Spacing.md,
+  },
+  benefitRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.md,
+    marginBottom: Spacing.sm,
+  },
+  benefitIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: Colors.aquaMint,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  benefitText: {
+    flex: 1,
     color: Colors.text,
     fontSize: FontSize.md,
-    textAlign: 'center',
-    fontWeight: '600',
+    lineHeight: 22,
+    fontWeight: '500',
   },
-  secondaryBtn: {
-    marginTop: Spacing.xs,
-    paddingVertical: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
+  freeFootnote: {
+    color: Colors.textMuted,
+    fontSize: FontSize.sm,
+    lineHeight: 20,
+    marginBottom: Spacing.lg,
   },
-  secondaryBtnText: {
-    color: Colors.aquaMint,
-    fontSize: FontSize.md,
-    fontWeight: '700',
+  pickPlanTitle: {
+    color: Colors.text,
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    marginBottom: Spacing.md,
   },
   planCard: {
-    backgroundColor: Colors.card,
     borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
     marginBottom: Spacing.md,
+    backgroundColor: Colors.card,
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  planCardPro: {
-    borderColor: Colors.sunriseYellow + '60',
+  planCardFeatured: {
+    borderWidth: 2,
+    borderColor: Colors.sunriseYellow + 'AA',
+    backgroundColor: Colors.surface,
   },
-  planHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginBottom: Spacing.xs,
-  },
-  planName: {
-    color: Colors.text,
-    fontSize: FontSize.xl,
-    fontWeight: '700',
-  },
-  planBadge: {
-    backgroundColor: Colors.textMuted,
+  bestValuePill: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.sunriseYellow + '28',
     paddingHorizontal: Spacing.sm,
-    paddingVertical: 2,
+    paddingVertical: 4,
     borderRadius: BorderRadius.sm,
-  },
-  planBadgePro: {
-    backgroundColor: Colors.success,
-  },
-  planBadgeText: {
-    color: '#FFFFFF',
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-  },
-  planLimits: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.sm,
     marginBottom: Spacing.sm,
   },
-  features: {
+  bestValueText: {
+    color: Colors.sunriseYellow,
+    fontSize: FontSize.xs,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  planCardHeader: {
     marginBottom: Spacing.md,
   },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    paddingVertical: 4,
+  planCardTitle: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    marginBottom: Spacing.xs,
   },
-  featureText: {
+  planCardPrice: {
     color: Colors.text,
-    fontSize: FontSize.md,
+    fontSize: FontSize.hero,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
-  planBtn: {
-    borderRadius: BorderRadius.md,
-    minHeight: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.sm,
+  planCardPeriod: {
+    color: Colors.textMuted,
+    fontSize: FontSize.sm,
+    marginTop: 4,
   },
-  planBtnPro: {
+  introLine: {
+    color: Colors.aquaMint,
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    marginBottom: Spacing.md,
+  },
+  subscribeBtn: {
     backgroundColor: Colors.coralPulse,
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 52,
+    shadowColor: Colors.coralPulse,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  planBtnDisabled: {
-    opacity: 0.7,
+  subscribeBtnBusy: {
+    opacity: 0.85,
   },
-  planBtnText: {
+  subscribeBtnText: {
     color: '#FFFFFF',
     fontSize: FontSize.md,
-    fontWeight: '700',
-    textAlign: 'center',
+    fontWeight: '800',
   },
-  loader: {
-    paddingVertical: Spacing.md,
+  loadingPlans: {
+    alignItems: 'center',
+    paddingVertical: Spacing.xl,
+    gap: Spacing.md,
+  },
+  loadingPlansText: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.sm,
   },
   configHint: {
     color: Colors.textMuted,
     fontSize: FontSize.sm,
     lineHeight: 20,
+    marginBottom: Spacing.md,
   },
-  restoreBtn: {
-    alignItems: 'center',
-    paddingVertical: Spacing.md,
-  },
-  restoreText: {
-    color: Colors.textSecondary,
-    fontSize: FontSize.md,
-    fontWeight: '600',
-  },
-  note: {
-    color: Colors.textMuted,
-    fontSize: FontSize.sm,
+  legalBlock: {
     marginTop: Spacing.md,
-    textAlign: 'center',
-    lineHeight: 20,
+    paddingTop: Spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  legalTitle: {
+    color: Colors.textMuted,
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    marginBottom: Spacing.sm,
+  },
+  legalText: {
+    color: Colors.textMuted,
+    fontSize: FontSize.xs,
+    lineHeight: 18,
+  },
+  restoreFooter: {
+    alignItems: 'center',
+    paddingVertical: Spacing.lg,
+  },
+  restoreFooterText: {
+    color: Colors.textSecondary,
+    fontSize: FontSize.sm,
+    fontWeight: '600',
   },
 });

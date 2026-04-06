@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Session, User } from '@supabase/supabase-js';
+import { Session, User, type PostgrestError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types/database';
 
@@ -54,5 +54,13 @@ export function useAuth() {
     await supabase.auth.signOut();
   }, []);
 
-  return { session, user, profile, loading, signUp, signIn, signOut };
+  /** Permanently deletes the account server-side (RPC), then signs out locally. */
+  const deleteAccount = useCallback(async (): Promise<PostgrestError | null> => {
+    const { error } = await supabase.rpc('delete_own_account');
+    if (error) return error;
+    await supabase.auth.signOut();
+    return null;
+  }, []);
+
+  return { session, user, profile, loading, signUp, signIn, signOut, deleteAccount };
 }
