@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from '../../src/lib/supabase';
+import { isSupabaseConfigured, supabase } from '../../src/lib/supabase';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
 import { ConfettiDots } from '../../src/components/ConfettiDots';
 
@@ -29,6 +29,13 @@ export default function SignUpScreen() {
     }
     if (password.length < 6) {
       Alert.alert('Error', 'Password must be at least 6 characters.');
+      return;
+    }
+    if (!isSupabaseConfigured) {
+      Alert.alert(
+        'Sign up unavailable',
+        'This install was built without Supabase settings. In Expo, add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY for the production environment, then run a new EAS iOS build and submit to TestFlight.',
+      );
       return;
     }
     setLoading(true);

@@ -1,25 +1,42 @@
 {
+  "cli": {
+    "appVersionSource": "local"
+  },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "environment": "development",
       "env": {
         "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "true"
       }
     },
     "preview": {
       "distribution": "internal",
+      "environment": "preview",
+      "android": {
+        "buildType": "app-bundle"
+      },
       "env": {
-        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "true"
+        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "false"
       }
     },
     "beta": {
       "distribution": "store",
+      "environment": "production",
+      "android": {
+        "buildType": "app-bundle"
+      },
       "env": {
-        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "true"
+        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "false"
       }
     },
     "production": {
+      "distribution": "store",
+      "environment": "production",
+      "android": {
+        "buildType": "app-bundle"
+      },
       "env": {
         "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "false"
       }
