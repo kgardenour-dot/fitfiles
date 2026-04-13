@@ -6,5 +6,7 @@ export const REVENUECAT_ENTITLEMENT_PRO =
 
 export function hasProEntitlement(info: CustomerInfo | null): boolean {
   if (!info) return false;
-  return info.entitlements.active[REVENUECAT_ENTITLEMENT_PRO] != null;
+  const active = info.entitlements?.active;
+  if (!active) return false;
+  return active[REVENUECAT_ENTITLEMENT_PRO] != null;
 }
