@@ -2,7 +2,7 @@
   "expo": {
     "name": "FitLinks",
     "slug": "fitlinks",
-    "version": "1.0.9",
+    "version": "1.0.10",
     "orientation": "portrait",
     "icon": "./assets/fitlinks_logo_navy.png",
     "userInterfaceStyle": "light",
@@ -11,7 +11,7 @@
       "backgroundColor": "#0B1220"
     },
     "ios": {
-      "buildNumber": "9",
+      "buildNumber": "10",
       "icon": "./assets/fitlinks_logo_navy.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.banditinnovations.fitlinks",
@@ -25,7 +25,7 @@
       }
     },
     "android": {
-      "versionCode": 9,
+      "versionCode": 10,
       "adaptiveIcon": {
         "foregroundImage": "./assets/fitlinks_logo_navy.png",
         "backgroundColor": "#0B1220"

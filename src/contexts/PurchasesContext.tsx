@@ -77,10 +77,16 @@ export function PurchasesProvider({
       setHasApiKey(false);
       return;
     }
-    setHasApiKey(true);
-    Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.WARN);
-    Purchases.configure({ apiKey });
-    setIsConfigured(true);
+    try {
+      Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.WARN);
+      Purchases.configure({ apiKey });
+      setHasApiKey(true);
+    } catch (e) {
+      console.warn('[RevenueCat] configure failed', e);
+      setHasApiKey(false);
+    } finally {
+      setIsConfigured(true);
+    }
   }, []);
 
   useEffect(() => {

@@ -14,6 +14,7 @@ import { PurchasesProvider } from '../src/contexts/PurchasesContext';
 import { getPendingRedirect, setPendingRedirect, clearPendingRedirect } from '../src/utils/pendingRedirect';
 import { normalizeShareUrl } from '../src/utils/url';
 import { shouldHandleLegacyShare } from '../src/utils/shareGate';
+import { ErrorBoundary } from '../src/components/ErrorBoundary';
 
 function pickParam(value: unknown): string | undefined {
   if (value == null) return undefined;
@@ -40,16 +41,34 @@ export default function RootLayout() {
   const hasStoredRedirectRef = useRef(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setLoading(false);
+    let cancelled = false;
+
+    supabase.auth
+      .getSession()
+      .then((result) => {
+        if (cancelled) return;
+        const s = result.data?.session ?? null;
+        setSession(s);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('[FitLinks] getSession failed', err);
+        if (!cancelled) {
+          setSession(null);
+          setLoading(false);
+        }
+      });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, s) => {
+      if (!cancelled) setSession(s);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Single owner for legacy share navigation (cold + warm). +not-found does NOT navigate for legacy shares.
@@ -138,22 +157,26 @@ export default function RootLayout() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
-        <ActivityIndicator size="large" color={Colors.coralPulse} />
-      </View>
+      <ErrorBoundary>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
+          <ActivityIndicator size="large" color={Colors.coralPulse} />
+        </View>
+      </ErrorBoundary>
     );
   }
 
   return (
-    <ShareIntentProvider>
-      <PurchasesProvider userId={session?.user?.id ?? null}>
-        <WorkoutsProvider>
-          <CollectionsProvider>
-            <RootStack session={session} />
-          </CollectionsProvider>
-        </WorkoutsProvider>
-      </PurchasesProvider>
-    </ShareIntentProvider>
+    <ErrorBoundary>
+      <ShareIntentProvider>
+        <PurchasesProvider userId={session?.user?.id ?? null}>
+          <WorkoutsProvider>
+            <CollectionsProvider>
+              <RootStack session={session} />
+            </CollectionsProvider>
+          </WorkoutsProvider>
+        </PurchasesProvider>
+      </ShareIntentProvider>
+    </ErrorBoundary>
   );
 }
 

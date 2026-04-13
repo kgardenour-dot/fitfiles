@@ -1,0 +1,109 @@
+diff --git a/node_modules/expo-share-intent/ios/ExpoShareIntentModule.swift b/node_modules/expo-share-intent/ios/ExpoShareIntentModule.swift
+index e52b6d0..5c42e09 100644
+--- a/node_modules/expo-share-intent/ios/ExpoShareIntentModule.swift
++++ b/node_modules/expo-share-intent/ios/ExpoShareIntentModule.swift
+@@ -84,7 +84,7 @@ public class ExpoShareIntentModule: Module {
+                             return nil
+                         }
+                         guard let json = toJson(data: sharedMediaFiles) else { return "[]" }
+-                        return "{ \"files\": \(json), \"type\": \"\(url.fragment!)\" }"
++                        return "{ \"files\": \(json), \"type\": \"\(url.fragment ?? "media")\" }"
+                     } else {
+                         return "empty"
+                     }
+@@ -103,7 +103,7 @@ public class ExpoShareIntentModule: Module {
+                             return nil
+                         }
+                         guard let json = toJson(data: sharedMediaFiles) else { return "[]" }
+-                        return "{ \"files\": \(json), \"type\": \"\(url.fragment!)\" }"
++                        return "{ \"files\": \(json), \"type\": \"\(url.fragment ?? "file")\" }"
+                     } else {
+                         return "empty"
+                     }
+@@ -116,7 +116,7 @@ public class ExpoShareIntentModule: Module {
+                             return WebUrl.init(url: $0.url, meta: $0.meta)
+                         }
+                         guard let json = toJson(data: sharedWebUrls) else { return "[]" }
+-                        return "{ \"weburls\": \(json), \"type\": \"\(url.fragment!)\" }"
++                        return "{ \"weburls\": \(json), \"type\": \"\(url.fragment ?? "weburl")\" }"
+                     } else {
+                         return "empty"
+                     }
+@@ -127,10 +127,10 @@ public class ExpoShareIntentModule: Module {
+                         latestText = sharedArray.joined(separator: ",")
+                         let optionalString = latestText
+                         if let unwrapped = optionalString {
+-                            return try? ShareIntentText(text: unwrapped, type: url.fragment!)
++                            return try? ShareIntentText(text: unwrapped, type: url.fragment ?? "text")
+                                 .toJSON()
+                         }
+-                        return latestText!
++                        return latestText ?? "empty"
+                     } else {
+                         return "empty"
+                     }
+@@ -140,7 +140,7 @@ public class ExpoShareIntentModule: Module {
+                 let optionalString = latestText
+                 // now unwrap it
+                 if let unwrapwebUrl = optionalString {
+-                    return try? ShareIntentText(text: unwrapwebUrl, type: url.fragment!).toJSON()
++                    return try? ShareIntentText(text: unwrapwebUrl, type: url.fragment ?? "unknown").toJSON()
+                 } else {
+                     return "empty"
+                 }
+@@ -148,7 +148,7 @@ public class ExpoShareIntentModule: Module {
+             self.sendEvent(
+                 "onError",
+                 [
+-                    "value": "file type is Invalid \(url.fragment!)"
++                    "value": "file type is Invalid \(url.fragment ?? "nil")"
+                 ])
+             return "error"
+         }
+@@ -205,29 +205,27 @@ public class ExpoShareIntentModule: Module {
+ 
+     private func decodeMedia(data: Data) -> [SharedMediaFile] {
+         let encodedData = try? JSONDecoder().decode([SharedMediaFile].self, from: data)
+-        return encodedData!
++        return encodedData ?? []
+     }
+     private func decodeWebUrl(data: Data) -> [WebUrl] {
+         let encodedData = try? JSONDecoder().decode([WebUrl].self, from: data)
+-        return encodedData!
++        return encodedData ?? []
+     }
+ 
+     private func toJson(data: [SharedMediaFile]?) -> String? {
+         if data == nil {
+             return nil
+         }
+-        let encodedData = try? JSONEncoder().encode(data)
+-        let json = String(data: encodedData!, encoding: .utf8)!
+-        return json
++        guard let encodedData = try? JSONEncoder().encode(data) else { return nil }
++        return String(data: encodedData, encoding: .utf8)
+     }
+     
+     private func toJson(data: [WebUrl]?) -> String? {
+         if data == nil {
+             return nil
+         }
+-        let encodedData = try? JSONEncoder().encode(data)
+-        let json = String(data: encodedData!, encoding: .utf8)!
+-        return json
++        guard let encodedData = try? JSONEncoder().encode(data) else { return nil }
++        return String(data: encodedData, encoding: .utf8)
+     }
+ 
+     struct ShareIntentText: Codable {
+@@ -286,8 +284,7 @@ public class ExpoShareIntentModule: Module {
+ 
+ extension Encodable {
+     func toJSON() throws -> String? {
+-        let jsonData = try? JSONEncoder().encode(self)
+-        let jsonString = String(data: jsonData!, encoding: .utf8)
+-        return jsonString
++        guard let jsonData = try? JSONEncoder().encode(self) else { return nil }
++        return String(data: jsonData, encoding: .utf8)
+     }
+ }
