@@ -22,8 +22,9 @@ import { hasProEntitlement } from '../config/revenuecat';
 
 const isNative = Platform.OS === 'ios' || Platform.OS === 'android';
 const revenueCatMode =
-  Platform.OS === 'ios' ? 'configure-only' : 'full';
+  Platform.OS === 'ios' ? 'listener' : 'full';
 const canConfigureRevenueCat = isNative && revenueCatMode !== 'off';
+const canObserveRevenueCat = isNative && (revenueCatMode === 'listener' || revenueCatMode === 'full');
 const canUseRevenueCat = isNative && revenueCatMode === 'full';
 const CONFIGURE_DELAY_MS = Platform.OS === 'ios' ? 2000 : 0;
 
@@ -87,7 +88,7 @@ export function PurchasesProvider({
       try {
         Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.WARN);
         Purchases.configure({ apiKey });
-        setHasApiKey(canUseRevenueCat);
+        setHasApiKey(canObserveRevenueCat);
       } catch (e) {
         console.warn('[RevenueCat] configure failed', e);
         setHasApiKey(false);
@@ -126,7 +127,7 @@ export function PurchasesProvider({
   }, [userId, isConfigured, hasApiKey]);
 
   useEffect(() => {
-    if (!canUseRevenueCat || !isConfigured || !hasApiKey) return;
+    if (!canObserveRevenueCat || !isConfigured || !hasApiKey) return;
 
     const listener = (info: CustomerInfo) => setCustomerInfo(info);
     Purchases.addCustomerInfoUpdateListener(listener);
