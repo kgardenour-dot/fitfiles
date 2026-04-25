@@ -22,9 +22,12 @@ import { hasProEntitlement } from '../config/revenuecat';
 
 const isNative = Platform.OS === 'ios' || Platform.OS === 'android';
 const revenueCatMode =
-  Platform.OS === 'ios' ? 'listener' : 'full';
+  Platform.OS === 'ios' ? 'login' : 'full';
 const canConfigureRevenueCat = isNative && revenueCatMode !== 'off';
-const canObserveRevenueCat = isNative && (revenueCatMode === 'listener' || revenueCatMode === 'full');
+const canObserveRevenueCat = isNative && (
+  revenueCatMode === 'listener' || revenueCatMode === 'login' || revenueCatMode === 'full'
+);
+const canIdentifyRevenueCat = isNative && (revenueCatMode === 'login' || revenueCatMode === 'full');
 const canUseRevenueCat = isNative && revenueCatMode === 'full';
 const CONFIGURE_DELAY_MS = Platform.OS === 'ios' ? 2000 : 0;
 
@@ -101,7 +104,7 @@ export function PurchasesProvider({
   }, []);
 
   useEffect(() => {
-    if (!canUseRevenueCat || !isConfigured || !hasApiKey) return;
+    if (!canIdentifyRevenueCat || !isConfigured || !hasApiKey) return;
 
     let cancelled = false;
 
