@@ -188,11 +188,13 @@ export default function LibraryScreen() {
       <ConfettiDots />
       {/* Header: logo left, add button right */}
       <View style={styles.header}>
-        <Image
-          source={require('../../assets/fitlinks_logo.png')}
-          style={styles.headerLogo}
-          resizeMode="contain"
-        />
+        <View style={styles.headerLogoWrap}>
+          <Image
+            source={require('../../assets/fitlinks_logo.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
+        </View>
         <TouchableOpacity
           style={styles.addBtn}
           onPress={() => router.push('/save')}
@@ -335,11 +337,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.md,
+    minHeight: 76,
+  },
+  headerLogoWrap: {
+    width: 232,
+    height: 72,
+    overflow: 'hidden',
   },
   headerLogo: {
-    width: 280,
-    height: 109,
-    marginLeft: -Spacing.md,
+    position: 'absolute',
+    width: 312,
+    height: 312,
+    left: -56,
+    top: -112,
   },
   addBtn: {
     width: 40,

@@ -21,10 +21,11 @@ import { supabase } from '../lib/supabase';
 import { hasProEntitlement } from '../config/revenuecat';
 
 const isNative = Platform.OS === 'ios' || Platform.OS === 'android';
-// Temporary iOS launch-crash isolation: build 12 still crashes before the first screen
-// while RevenueCat starts native backend work. Keep Android billing live, but skip
-// RevenueCat on iOS until the native crash is resolved.
-const isRevenueCatEnabled = isNative && Platform.OS !== 'ios';
+const revenueCatMode =
+  Platform.OS === 'ios' ? 'configure-only' : 'full';
+const canConfigureRevenueCat = isNative && revenueCatMode !== 'off';
+const canUseRevenueCat = isNative && revenueCatMode === 'full';
+const CONFIGURE_DELAY_MS = Platform.OS === 'ios' ? 2000 : 0;
 
 function getApiKey(): string | undefined {
   const ios = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY?.trim();
@@ -64,13 +65,13 @@ export function PurchasesProvider({
   children: ReactNode;
 }) {
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
-  const [isConfigured, setIsConfigured] = useState(!isRevenueCatEnabled);
+  const [isConfigured, setIsConfigured] = useState(!canConfigureRevenueCat);
   const [hasApiKey, setHasApiKey] = useState(false);
   const configureStarted = useRef(false);
   const lastLoggedInUserId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isRevenueCatEnabled || configureStarted.current) return;
+    if (!canConfigureRevenueCat || configureStarted.current) return;
     configureStarted.current = true;
     const apiKey = getApiKey();
     if (!apiKey) {
@@ -81,20 +82,25 @@ export function PurchasesProvider({
       setHasApiKey(false);
       return;
     }
-    try {
-      Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.WARN);
-      Purchases.configure({ apiKey });
-      setHasApiKey(true);
-    } catch (e) {
-      console.warn('[RevenueCat] configure failed', e);
-      setHasApiKey(false);
-    } finally {
-      setIsConfigured(true);
-    }
+
+    const timer = setTimeout(() => {
+      try {
+        Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.WARN);
+        Purchases.configure({ apiKey });
+        setHasApiKey(canUseRevenueCat);
+      } catch (e) {
+        console.warn('[RevenueCat] configure failed', e);
+        setHasApiKey(false);
+      } finally {
+        setIsConfigured(true);
+      }
+    }, CONFIGURE_DELAY_MS);
+
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    if (!isRevenueCatEnabled || !isConfigured || !hasApiKey) return;
+    if (!canUseRevenueCat || !isConfigured || !hasApiKey) return;
 
     let cancelled = false;
 
@@ -120,7 +126,7 @@ export function PurchasesProvider({
   }, [userId, isConfigured, hasApiKey]);
 
   useEffect(() => {
-    if (!isRevenueCatEnabled || !isConfigured || !hasApiKey) return;
+    if (!canUseRevenueCat || !isConfigured || !hasApiKey) return;
 
     const listener = (info: CustomerInfo) => setCustomerInfo(info);
     Purchases.addCustomerInfoUpdateListener(listener);
@@ -142,7 +148,7 @@ export function PurchasesProvider({
   }, [userId, customerInfo, hasApiKey]);
 
   const refreshCustomerInfo = useCallback(async () => {
-    if (!isRevenueCatEnabled || !isConfigured || !hasApiKey) return;
+    if (!canUseRevenueCat || !isConfigured || !hasApiKey) return;
     try {
       const info = await Purchases.getCustomerInfo();
       setCustomerInfo(info);
@@ -152,7 +158,7 @@ export function PurchasesProvider({
   }, [isConfigured, hasApiKey]);
 
   const restorePurchases = useCallback(async () => {
-    if (!isRevenueCatEnabled || !isConfigured || !hasApiKey) return null;
+    if (!canUseRevenueCat || !isConfigured || !hasApiKey) return null;
     try {
       const info = await Purchases.restorePurchases();
       setCustomerInfo(info);
@@ -164,7 +170,7 @@ export function PurchasesProvider({
   }, [isConfigured, hasApiKey]);
 
   const getOfferings = useCallback(async () => {
-    if (!isRevenueCatEnabled || !isConfigured || !hasApiKey) return null;
+    if (!canUseRevenueCat || !isConfigured || !hasApiKey) return null;
     try {
       return await Purchases.getOfferings();
     } catch (e) {
@@ -175,7 +181,7 @@ export function PurchasesProvider({
 
   const purchasePackage = useCallback(
     async (pkg: PurchasesPackage) => {
-      if (!isRevenueCatEnabled || !isConfigured || !hasApiKey) return null;
+      if (!canUseRevenueCat || !isConfigured || !hasApiKey) return null;
       try {
         const { customerInfo: ci } = await Purchases.purchasePackage(pkg);
         setCustomerInfo(ci);
