@@ -367,7 +367,7 @@ const styles = StyleSheet.create({
   },
   searchRow: {
     paddingHorizontal: Spacing.md,
-    marginTop: -2,
+    marginTop: Spacing.xs,
   },
   searchBarWrap: {
     flexDirection: 'row',
