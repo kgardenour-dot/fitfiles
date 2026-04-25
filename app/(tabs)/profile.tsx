@@ -153,10 +153,12 @@ export default function ProfileScreen() {
       <View style={styles.dangerSection}>
         <Text style={styles.dangerTitle}>Account</Text>
         <TouchableOpacity
-          style={styles.deleteBtn}
+          style={[styles.deleteBtn, deletingAccount && styles.deleteBtnDisabled]}
           onPress={handleDeleteAccount}
           disabled={deletingAccount}
           activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Delete account"
         >
           {deletingAccount ? (
             <ActivityIndicator color={Colors.textMuted} />
@@ -329,8 +331,18 @@ const styles = StyleSheet.create({
   deleteBtn: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: Spacing.sm,
-    paddingVertical: Spacing.xs,
+    minHeight: 48,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.textMuted + '55',
+    backgroundColor: Colors.background + '55',
+  },
+  deleteBtnDisabled: {
+    opacity: 0.6,
   },
   deleteBtnText: {
     color: Colors.textMuted,
