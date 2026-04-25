@@ -3,11 +3,9 @@ import { Stack, useRouter, useSegments, useGlobalSearchParams } from 'expo-route
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import * as Linking from 'expo-linking';
-import { ShareIntentProvider } from 'expo-share-intent';
 import { supabase } from '../src/lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Colors } from '../src/constants/theme';
-import { useShareIntake } from '../src/hooks/useShareIntake';
 import { WorkoutsProvider } from '../src/contexts/WorkoutsContext';
 import { CollectionsProvider } from '../src/contexts/CollectionsContext';
 import { PurchasesProvider } from '../src/contexts/PurchasesContext';
@@ -167,21 +165,18 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
-      <ShareIntentProvider>
-        <PurchasesProvider userId={session?.user?.id ?? null}>
-          <WorkoutsProvider>
-            <CollectionsProvider>
-              <RootStack session={session} />
-            </CollectionsProvider>
-          </WorkoutsProvider>
-        </PurchasesProvider>
-      </ShareIntentProvider>
+      <PurchasesProvider userId={session?.user?.id ?? null}>
+        <WorkoutsProvider>
+          <CollectionsProvider>
+            <RootStack />
+          </CollectionsProvider>
+        </WorkoutsProvider>
+      </PurchasesProvider>
     </ErrorBoundary>
   );
 }
 
-function RootStack({ session }: { session: Session | null }) {
-  useShareIntake(session);
+function RootStack() {
   return (
     <>
       <StatusBar style="light" />
