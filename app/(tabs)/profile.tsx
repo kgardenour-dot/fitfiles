@@ -164,7 +164,7 @@ export default function ProfileScreen() {
             <ActivityIndicator color={Colors.textMuted} />
           ) : (
             <>
-              <Ionicons name="trash-outline" size={20} color={Colors.textMuted} />
+              <Ionicons name="trash-outline" size={20} color={Colors.sunsetOrange} />
               <Text style={styles.deleteBtnText}>Delete account</Text>
             </>
           )}
@@ -338,14 +338,14 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: Colors.textMuted + '55',
-    backgroundColor: Colors.background + '55',
+    borderColor: Colors.sunsetOrange + '55',
+    backgroundColor: Colors.sunsetOrange + '18',
   },
   deleteBtnDisabled: {
     opacity: 0.6,
   },
   deleteBtnText: {
-    color: Colors.textMuted,
+    color: Colors.sunsetOrange,
     fontSize: FontSize.md,
     fontWeight: '600',
   },

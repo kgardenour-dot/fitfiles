@@ -22,7 +22,7 @@ import { hasProEntitlement } from '../config/revenuecat';
 
 const isNative = Platform.OS === 'ios' || Platform.OS === 'android';
 const revenueCatMode =
-  Platform.OS === 'ios' ? 'login' : 'full';
+  'full';
 const canConfigureRevenueCat = isNative && revenueCatMode !== 'off';
 const canObserveRevenueCat = isNative && (
   revenueCatMode === 'listener' || revenueCatMode === 'login' || revenueCatMode === 'full'
