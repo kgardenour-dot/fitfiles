@@ -11,7 +11,7 @@
       "backgroundColor": "#0B1220"
     },
     "ios": {
-      "buildNumber": "14",
+      "buildNumber": "15",
       "icon": "./assets/fitlinks_logo_navy.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.banditinnovations.fitlinks",
