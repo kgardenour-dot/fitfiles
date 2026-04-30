@@ -187,8 +187,8 @@ export default function UpgradeScreen() {
             </View>
 
             <Text style={styles.freeFootnote}>
-              Free during beta: {PLAN_LIMITS.free.maxWorkouts} workouts and {PLAN_LIMITS.free.maxCollections}{' '}
-              collections. Upgrade removes these caps.
+              Free plan includes up to {PLAN_LIMITS.free.maxWorkouts} saved workouts and {PLAN_LIMITS.free.maxCollections}{' '}
+              collections. Pro removes these limits.
             </Text>
 
             <Text style={styles.pickPlanTitle}>Choose your plan</Text>

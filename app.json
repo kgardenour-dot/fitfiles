@@ -25,7 +25,7 @@
       }
     },
     "android": {
-      "versionCode": 10,
+      "versionCode": 19,
       "adaptiveIcon": {
         "foregroundImage": "./assets/fitlinks_logo_navy.png",
         "backgroundColor": "#0B1220"

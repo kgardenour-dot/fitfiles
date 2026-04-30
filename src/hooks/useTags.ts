@@ -22,9 +22,15 @@ export function useTags() {
   }, []);
 
   const createTag = useCallback(async (name: string, tagType: TagType) => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) throw new Error('You must be signed in to create a tag.');
+
     const { data, error } = await supabase
       .from('tags')
-      .insert({ name, tag_type: tagType })
+      .insert({ user_id: userId, name, tag_type: tagType })
       .select()
       .single();
     if (error) throw error;
