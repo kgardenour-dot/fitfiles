@@ -41,5 +41,8 @@
         "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "false"
       }
     }
+  },
+  "submit": {
+    "production": {}
   }
 }
