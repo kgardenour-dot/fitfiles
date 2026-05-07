@@ -92,8 +92,8 @@ android {
         applicationId 'com.banditinnovations.fitlinks'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 19
-        versionName "1.0.10"
+        versionCode 20
+        versionName "1.0.11"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
