@@ -299,6 +299,7 @@ export default function ImportScreen() {
   const [upgradeShown, setUpgradeShown] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
   const consumedShareNonceRef = useRef<string | null>(null);
+  const autoSaveShareNonceRef = useRef<string | null>(null);
   const saveCompletedRef = useRef(false);
   const hasUserEditedTitleRef = useRef(false);
   const hasUserEditedUrlRef = useRef(false);
@@ -604,6 +605,20 @@ export default function ImportScreen() {
       }
     }
   };
+
+  // iOS share-intent flow should feel one-tap: once a shared URL is loaded, save it automatically.
+  useEffect(() => {
+    const shareNonce = pickParam(params.shareNonce);
+    const sharedKey = pickParam(params.sharedKey);
+    if (!sharedKey || !shareNonce) return;
+    if (autoSaveShareNonceRef.current === shareNonce) return;
+    if (saveCompleted || isSaving) return;
+    if (!url.trim()) return;
+    if (hasUserEditedUrlRef.current) return;
+
+    autoSaveShareNonceRef.current = shareNonce;
+    handleSave();
+  }, [params.shareNonce, params.sharedKey, saveCompleted, isSaving, url]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
