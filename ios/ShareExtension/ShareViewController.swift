@@ -153,8 +153,8 @@ class ShareViewController: UIViewController {
           if let url = URL(string: trimmed), let scheme = url.scheme?.lowercased(),
              (scheme == "http" || scheme == "https") {
             NSLog("[ShareViewController] Text is a URL, handling as URL share: \(trimmed)")
-            var meta = ""
-            meta = await self.fetchPageMeta(url: url) ?? ""
+            // Skip network fetch here — opens host app faster; Import screen loads OG metadata.
+            let meta = ""
             self.sharedWebUrl.append(WebUrl(url: trimmed, meta: meta))
             if index == (content.attachments?.count)! - 1 {
               let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
@@ -199,14 +199,8 @@ class ShareViewController: UIViewController {
         earlyDefaults?.set(urlString, forKey: "\(self.sharedKey)_url")
         earlyDefaults?.synchronize()
 
-        // Fetch page metadata server-side (needed for non-Safari browsers like Chrome
-        // that don't support NSExtensionJavaScriptPreprocessingFile)
-        var meta = ""
-        if urlString.hasPrefix("http") {
-          NSLog("[ShareViewController] handleUrl: fetching page metadata for \(urlString)")
-          meta = await self.fetchPageMeta(url: item) ?? ""
-          NSLog("[ShareViewController] handleUrl: fetched meta length=\(meta.count)")
-        }
+        // Skip blocking fetchPageMeta — host app Import loads title/thumbnail (faster handoff).
+        let meta = ""
 
         Task { @MainActor in
 
@@ -244,88 +238,6 @@ class ShareViewController: UIViewController {
     }
   }
 
-  /// Fetch page title and meta tags via HTTP for URLs shared without JS preprocessing (e.g. Chrome).
-  /// Returns a JSON string matching the same format as ShareExtensionPreprocessor.js output.
-  private func fetchPageMeta(url: URL) async -> String? {
-    do {
-      var request = URLRequest(url: url, timeoutInterval: 5)
-      request.httpMethod = "GET"
-      request.setValue(
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-        forHTTPHeaderField: "User-Agent"
-      )
-      request.setValue("text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        forHTTPHeaderField: "Accept"
-      )
-
-      let (data, response) = try await URLSession.shared.data(for: request)
-
-      // Only parse HTML responses
-      if let httpResponse = response as? HTTPURLResponse {
-        let contentType = httpResponse.value(forHTTPHeaderField: "Content-Type") ?? ""
-        guard contentType.contains("text/html") || contentType.contains("application/xhtml") else {
-          NSLog("[ShareExtension] fetchPageMeta: non-HTML content type: \(contentType)")
-          return nil
-        }
-      }
-
-      // Limit parsing to first 50KB to stay within share extension memory limits
-      let limit = min(data.count, 50_000)
-      let html = String(data: data[0..<limit], encoding: .utf8)
-        ?? String(data: data[0..<limit], encoding: .ascii)
-        ?? ""
-
-      if html.isEmpty { return nil }
-
-      var metas: [String: String] = [:]
-
-      // Extract <title>
-      if let titleRegex = try? NSRegularExpression(pattern: "<title[^>]*>([^<]*)</title>", options: .caseInsensitive),
-         let match = titleRegex.firstMatch(in: html, range: NSRange(html.startIndex..., in: html)),
-         let range = Range(match.range(at: 1), in: html) {
-        let title = String(html[range]).trimmingCharacters(in: .whitespacesAndNewlines)
-        if !title.isEmpty {
-          metas["title"] = title
-        }
-      }
-
-      // Extract <meta> tags with name/property and content attributes
-      // Pattern 1: name/property before content
-      let pattern1 = "<meta\\s+[^>]*(?:name|property)=[\"']([^\"']+)[\"'][^>]*content=[\"']([^\"']*)[\"'][^>]*/?>|"
-      // Pattern 2: content before name/property
-      let pattern2 = "<meta\\s+[^>]*content=[\"']([^\"']*)[\"'][^>]*(?:name|property)=[\"']([^\"']+)[\"'][^>]*/?>"
-      let metaRegex = try NSRegularExpression(pattern: pattern1 + pattern2, options: .caseInsensitive)
-      let matches = metaRegex.matches(in: html, range: NSRange(html.startIndex..., in: html))
-
-      for match in matches {
-        var name: String?
-        var content: String?
-
-        if match.range(at: 1).location != NSNotFound, match.range(at: 2).location != NSNotFound,
-           let r1 = Range(match.range(at: 1), in: html), let r2 = Range(match.range(at: 2), in: html) {
-          name = String(html[r1])
-          content = String(html[r2])
-        } else if match.range(at: 3).location != NSNotFound, match.range(at: 4).location != NSNotFound,
-                  let r3 = Range(match.range(at: 3), in: html), let r4 = Range(match.range(at: 4), in: html) {
-          content = String(html[r3])
-          name = String(html[r4])
-        }
-
-        if let name = name, let content = content, !content.isEmpty {
-          metas[name] = content
-        }
-      }
-
-      if metas.isEmpty { return nil }
-
-      let jsonData = try JSONSerialization.data(withJSONObject: metas)
-      return String(data: jsonData, encoding: .utf8)
-    } catch {
-      NSLog("[ShareExtension] fetchPageMeta error: \(error.localizedDescription)")
-      return nil
-    }
-  }
-
   private func handlePrepocessing(content: NSExtensionItem, attachment: NSItemProvider, index: Int)
     async
   {
@@ -344,14 +256,32 @@ class ShareViewController: UIViewController {
             )
             let baseURI = results["baseURI"] as? String ?? ""
             let meta = results["meta"] as? String ?? ""
-            self.sharedWebUrl.append(
-              WebUrl(url: baseURI, meta: meta))
+            // Don't append empty slots — races with URL attachment handler and breaks arr.first parsing.
+            if baseURI.hasPrefix("http") {
+              self.sharedWebUrl.append(WebUrl(url: baseURI, meta: meta))
+            } else {
+              NSLog("[ShareViewController] Skipping invalid/empty baseURI from preprocessor")
+            }
             // If this is the last item, save sharedText in userDefaults and redirect to host app
             if index == (content.attachments?.count)! - 1 {
+              // Single attachment with empty JS baseURI: same fallback as "no preprocessor" path.
+              if self.sharedWebUrl.isEmpty,
+                attachment.hasItemConformingToTypeIdentifier(self.urlContentType),
+                let urlItem = try? await attachment.loadItem(forTypeIdentifier: self.urlContentType)
+                  as? URL
+              {
+                let urlString = urlItem.absoluteString
+                NSLog("[ShareViewController] Preprocessor had no URL; using attachment URL: \(urlString)")
+                self.sharedWebUrl.append(WebUrl(url: urlString, meta: ""))
+              }
+              guard !self.sharedWebUrl.isEmpty else {
+                self.dismissWithError(message: "No URL in share payload")
+                return
+              }
               let groupId = "group.com.banditinnovations.fitlinks"
               let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
               NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
-              
+
               let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)
               let data = self.toData(data: self.sharedWebUrl)
               userDefaults?.set(data, forKey: self.sharedKey)
@@ -359,8 +289,6 @@ class ShareViewController: UIViewController {
               NSLog("[ShareViewController] ✅ Writing WEBURL (preprocessing) to UserDefaults")
               NSLog("[ShareViewController] Suite: \(self.hostAppGroupIdentifier)")
               NSLog("[ShareViewController] Key: \(self.sharedKey)")
-              NSLog("[ShareViewController] URL: \(baseURI)")
-              NSLog("[ShareViewController] Meta: \(meta)")
               if let data = data {
                 NSLog("[ShareViewController] Payload length: \(data.count) bytes")
                 if let jsonStr = String(data: data, encoding: .utf8) {
@@ -379,10 +307,7 @@ class ShareViewController: UIViewController {
               if let urlItem = try? await attachment.loadItem(forTypeIdentifier: self.urlContentType) as? URL {
                 let urlString = urlItem.absoluteString
                 NSLog("[ShareViewController] Fallback URL: \(urlString)")
-                var meta = ""
-                if urlString.hasPrefix("http") {
-                  meta = await self.fetchPageMeta(url: urlItem) ?? ""
-                }
+                let meta = ""
                 self.sharedWebUrl.append(WebUrl(url: urlString, meta: meta))
                 if index == (content.attachments?.count)! - 1 {
                   let userDefaults = UserDefaults(suiteName: self.hostAppGroupIdentifier)

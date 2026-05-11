@@ -17,12 +17,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWorkouts } from '../src/hooks/useWorkouts';
 import { useCollections } from '../src/hooks/useCollections';
 import { useAuth } from '../src/hooks/useAuth';
-import { useEntitlements } from '../src/hooks/useEntitlements';
 import { supabase } from '../src/lib/supabase';
 import { extractDomain, fetchUrlMetadata } from '../src/lib/og-scraper';
 import { extractFirstUrl } from '../src/utils/url';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/constants/theme';
+import { PLAN_LIMITS } from '../src/constants/limits';
+import { BETA_DISABLE_PAYWALL } from '../src/config/flags';
+import { hasProEntitlement } from '../src/config/revenuecat';
+import { usePurchases } from '../src/contexts/PurchasesContext';
 import { getSharedPayload, clearSharedPayload } from '../src/native/sharedItems';
+import Purchases from 'react-native-purchases';
 
 const SAMPLE_LINK = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
 
@@ -64,10 +68,11 @@ function decodeHtmlEntities(input: string): string {
 function parsePreprocessorMeta(metaJson: string | undefined | null): {
   title: string;
   image: string | null;
+  canonicalUrl: string | null;
 } {
-  if (!metaJson) return { title: '', image: null };
+  if (!metaJson) return { title: '', image: null, canonicalUrl: null };
   const raw = metaJson.trim();
-  if (!raw) return { title: '', image: null };
+  if (!raw) return { title: '', image: null, canonicalUrl: null };
   try {
     const parsed = JSON.parse(raw) as Record<string, string>;
     // Prefer og:title over document.title for accuracy
@@ -79,9 +84,16 @@ function parsePreprocessorMeta(metaJson: string | undefined | null): {
       || parsed['twitter:image']
       || parsed['twitter:image:src']
       || null;
-    return { title: isLowQualityTitle(title) ? '' : title, image };
+    const ogUrl = (parsed['og:url'] || '').trim();
+    const canonicalUrl =
+      ogUrl && /^https?:\/\//i.test(ogUrl) ? ogUrl : null;
+    return {
+      title: isLowQualityTitle(title) ? '' : title,
+      image,
+      canonicalUrl,
+    };
   } catch {
-    return { title: '', image: null };
+    return { title: '', image: null, canonicalUrl: null };
   }
 }
 
@@ -118,9 +130,11 @@ function normalizeIncomingUrl(raw: string): string {
       return u.searchParams.get('url') || raw;
     }
 
-    // Instagram shares include a transient igsh param; remove tracking noise.
-    if (u.hostname.includes('instagram.com') && u.searchParams.has('igsh')) {
-      u.searchParams.delete('igsh');
+    // Instagram: drop tracking params so saves dedupe and metadata fetch behave.
+    if (u.hostname.includes('instagram.com')) {
+      ['igsh', 'ig_mid', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_id'].forEach(
+        (k) => u.searchParams.delete(k),
+      );
       return u.toString();
     }
 
@@ -285,8 +299,8 @@ export default function ImportScreen() {
   const router = useRouter();
   const { createWorkout, workouts, fetchWorkouts } = useWorkouts();
   const { collections, fetchCollections } = useCollections();
-  const { profile, user } = useAuth();
-  const { canSaveWorkout } = useEntitlements(profile);
+  const { profile } = useAuth();
+  const { hasApiKey, customerInfo: purchasesCustomerInfo } = usePurchases();
 
   const [url, setUrl] = useState('');
   const [title, setTitle] = useState('');
@@ -299,7 +313,7 @@ export default function ImportScreen() {
   const [upgradeShown, setUpgradeShown] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
   const consumedShareNonceRef = useRef<string | null>(null);
-  const autoSaveShareNonceRef = useRef<string | null>(null);
+  const autoSavedNonceRef = useRef<string | null>(null);
   const saveCompletedRef = useRef(false);
   const hasUserEditedTitleRef = useRef(false);
   const hasUserEditedUrlRef = useRef(false);
@@ -447,9 +461,15 @@ export default function ImportScreen() {
           setThumbnailUrl(preprocessor.image);
         }
 
+        let urlForAutoSave: string | null = null;
         if (val.startsWith('http://') || val.startsWith('https://')) {
+          const linkUrl =
+            preprocessor.canonicalUrl && preprocessor.canonicalUrl.startsWith('http')
+              ? preprocessor.canonicalUrl
+              : val;
+          urlForAutoSave = normalizeIncomingUrl(linkUrl);
           console.log('[FitLinks] Setting URL from payload');
-          applySharedUrl(val);
+          applySharedUrl(linkUrl);
         } else if (val.startsWith('file://')) {
           console.log('[FitLinks] Setting file URL from payload');
           setFileUrl(val);
@@ -457,12 +477,32 @@ export default function ImportScreen() {
         } else {
           const extracted = extractFirstUrl(val);
           if (extracted) {
+            urlForAutoSave = normalizeIncomingUrl(extracted);
             console.log('[FitLinks] Extracted URL from text:', extracted);
             applySharedUrl(extracted);
           } else {
             console.log('[FitLinks] No URL found, adding to notes');
             setNotes((prev) => (prev ? `${prev}\n\n${val}` : val));
           }
+        }
+
+        // Auto-save: trigger immediately with explicit overrides so we don't race React state.
+        const nonceForAuto = pickParam(params.shareNonce);
+        if (
+          urlForAutoSave
+          && nonceForAuto
+          && autoSavedNonceRef.current !== nonceForAuto
+          && !hasUserEditedUrlRef.current
+        ) {
+          autoSavedNonceRef.current = nonceForAuto;
+          console.log('[FitLinks] Auto-save from share payload', {
+            url: urlForAutoSave.substring(0, 80),
+          });
+          void handleSave({
+            url: urlForAutoSave,
+            title: preprocessor.title || undefined,
+            thumbnailUrl: preprocessor.image ?? undefined,
+          });
         }
 
         clearSharedPayload(sharedKey).catch(() => {});
@@ -486,24 +526,81 @@ export default function ImportScreen() {
     });
   };
 
-  const handleSave = async () => {
-    if (isSaving) return;
-    if (!user?.id) {
+  type SaveOverrides = { url?: string; title?: string; thumbnailUrl?: string | null };
+
+  const handleSave = async (overrides?: SaveOverrides) => {
+    console.log('[FitLinks] handleSave invoked');
+    if (isSaving) {
+      console.log('[FitLinks] handleSave skipped: already saving');
+      return;
+    }
+    // Share-extension cold open often runs before useAuth has applied getSession(); trust Supabase session here.
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) {
+      console.log('[FitLinks] handleSave blocked: no session');
       Alert.alert('Error', 'You must be logged in to save.');
       return;
     }
 
-    const trimmedUrl = url.trim();
+    const trimmedUrl = (overrides?.url ?? url).trim();
     if (!trimmedUrl) {
+      console.log('[FitLinks] handleSave blocked: empty URL');
       Alert.alert('URL required', 'Please enter a URL to save.');
       return;
     }
 
-    if (!canSaveWorkout(workouts.length)) {
+    // Fresh server count + RevenueCat (hook state can lag right after app launch / share cold-open).
+    const { count: workoutCountHead, error: countErr } = await supabase
+      .from('workout_links')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+    if (countErr) console.warn('[FitLinks] workout count query', countErr.message);
+    const savedCount =
+      typeof workoutCountHead === 'number' ? workoutCountHead : workouts.length;
+
+    // Mirror useEntitlements — async + resilient when RevenueCat throws before SDK is ready (iOS configure delay).
+    let tier: 'free' | 'pro' = 'free';
+    if (BETA_DISABLE_PAYWALL) {
+      tier = 'pro';
+    } else if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
+      tier = hasProEntitlement(purchasesCustomerInfo)
+        ? 'pro'
+        : profile?.plan_tier === 'pro'
+          ? 'pro'
+          : 'free';
+    } else if (!hasApiKey) {
+      tier = 'free';
+    } else {
+      try {
+        let ci = purchasesCustomerInfo;
+        if (!hasProEntitlement(ci)) {
+          ci = await Purchases.getCustomerInfo();
+        }
+        tier = hasProEntitlement(ci) ? 'pro' : 'free';
+      } catch (e) {
+        console.warn('[FitLinks] RevenueCat unavailable; using profile plan for save limit', e);
+        tier = profile?.plan_tier === 'pro' ? 'pro' : 'free';
+      }
+    }
+    const maxWorkouts = PLAN_LIMITS[tier].maxWorkouts;
+    if (savedCount >= maxWorkouts) {
+      console.log('[FitLinks] handleSave blocked: workout limit', { savedCount, maxWorkouts, tier });
       setUpgradeShown(true);
-      router.push('/upgrade');
+      Alert.alert(
+        'Save limit reached',
+        'Your current plan has a maximum number of saved links. Upgrade to save more.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Upgrade', onPress: () => router.push('/upgrade') },
+        ],
+      );
       return;
     }
+
+    console.log('[FitLinks] handleSave starting', { url: trimmedUrl.substring(0, 80) });
 
     setIsSaving(true);
     setSaveStatus('Saving workout_link...');
@@ -518,8 +615,10 @@ export default function ImportScreen() {
 
       // On cold-start shares users may tap Save before preview fetch completes.
       // Re-check metadata right before save so thumbnail/title aren't lost.
-      let finalTitle = title.trim();
-      let finalThumbnail = thumbnailUrl;
+      const titleBase = overrides?.title !== undefined ? overrides.title : title;
+      let finalTitle = (typeof titleBase === 'string' ? titleBase : '').trim();
+      let finalThumbnail =
+        overrides?.thumbnailUrl !== undefined ? overrides.thumbnailUrl : thumbnailUrl;
       if (!finalTitle || !finalThumbnail) {
         const meta = await fetchUrlMetadata(normalizedUrl);
         if (!finalTitle && meta.title && !isLowQualityTitle(meta.title)) {
@@ -530,6 +629,11 @@ export default function ImportScreen() {
           finalThumbnail = meta.thumbnail_url;
           setThumbnailUrl(meta.thumbnail_url);
         }
+      }
+
+      const MAX_TITLE_LEN = 500;
+      if (finalTitle.length > MAX_TITLE_LEN) {
+        finalTitle = `${finalTitle.slice(0, MAX_TITLE_LEN).trimEnd()}...`;
       }
 
       const { data } = await createWorkout(
@@ -549,12 +653,12 @@ export default function ImportScreen() {
 
       // Add to selected collections (non-blocking; don't fail import)
       const ids = Array.from(selectedCollectionIds);
-      if (ids.length > 0 && user?.id) {
+      if (ids.length > 0) {
         try {
           const rows = ids.map((collection_id) => ({
             collection_id,
             workout_link_id: data.id,
-            user_id: user.id,
+            user_id: userId,
           }));
           const { error } = await supabase
             .from('collection_items')
@@ -571,6 +675,7 @@ export default function ImportScreen() {
           setSaveCompleted(true);
           saveCompletedRef.current = true;
           setSaveStatus('Done. Navigating to Library...');
+          await fetchWorkouts();
           goToLibraryNow();
           return;
         }
@@ -580,6 +685,7 @@ export default function ImportScreen() {
       setSaveCompleted(true);
       saveCompletedRef.current = true;
       setSaveStatus('Done. Navigating to Library...');
+      await fetchWorkouts();
       goToLibraryNow();
       return;
     } catch (err: unknown) {
@@ -606,19 +712,7 @@ export default function ImportScreen() {
     }
   };
 
-  // iOS share-intent flow should feel one-tap: once a shared URL is loaded, save it automatically.
-  useEffect(() => {
-    const shareNonce = pickParam(params.shareNonce);
-    const sharedKey = pickParam(params.sharedKey);
-    if (!sharedKey || !shareNonce) return;
-    if (autoSaveShareNonceRef.current === shareNonce) return;
-    if (saveCompleted || isSaving) return;
-    if (!url.trim()) return;
-    if (hasUserEditedUrlRef.current) return;
-
-    autoSaveShareNonceRef.current = shareNonce;
-    handleSave();
-  }, [params.shareNonce, params.sharedKey, saveCompleted, isSaving, url]);
+  const openedFromShare = !!pickParam(params.sharedKey);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -631,8 +725,27 @@ export default function ImportScreen() {
             <Ionicons name="arrow-back" size={28} color={Colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Import Link</Text>
-          <View style={{ width: 28 }} />
+          {openedFromShare && !saveCompleted ? (
+            <TouchableOpacity
+              onPress={() => void handleSave()}
+              disabled={isSaving}
+              hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+            >
+              <Text style={styles.headerSaveText}>{isSaving ? 'Saving…' : 'Save'}</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={{ width: 56 }} />
+          )}
         </View>
+
+        {openedFromShare && !saveCompleted ? (
+          <View style={styles.shareHintBanner}>
+            <Ionicons name="information-circle-outline" size={20} color={Colors.aquaMint} />
+            <Text style={styles.shareHintText}>
+              Link loaded from Share. Tap Save (here or at the bottom) to add it to your library.
+            </Text>
+          </View>
+        ) : null}
 
         <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
           <Text style={styles.label}>URL (required)</Text>
@@ -706,7 +819,7 @@ export default function ImportScreen() {
 
           <TouchableOpacity
             style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
-            onPress={handleSave}
+            onPress={() => void handleSave()}
             disabled={isSaving}
           >
             {isSaving ? (
@@ -742,6 +855,31 @@ const styles = StyleSheet.create({
     color: Colors.text,
     fontSize: FontSize.lg,
     fontWeight: '700',
+  },
+  headerSaveText: {
+    color: Colors.aquaMint,
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    minWidth: 56,
+    textAlign: 'right',
+  },
+  shareHintBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.sm,
+    padding: Spacing.md,
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  shareHintText: {
+    flex: 1,
+    color: Colors.textSecondary,
+    fontSize: FontSize.sm,
+    lineHeight: 20,
   },
   form: {
     paddingHorizontal: Spacing.md,

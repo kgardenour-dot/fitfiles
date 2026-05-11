@@ -92,28 +92,31 @@ class SharedItemsModule: NSObject {
       return
     }
 
-    // JSON is an array of objects
-    if let arr = json as? [[String: Any]], let first = arr.first {
-      if let url = first["url"] as? String, url.hasPrefix("http") {
-        var result: [String: Any] = ["type": "weburl", "value": url]
-        if let meta = first["meta"] as? String, !meta.isEmpty {
-          result["meta"] = meta
-          NSLog("[SharedItemsModule] Including meta from preprocessor (\(meta.prefix(80))...)")
+    // JSON is an array of objects — use first *valid* URL (share extension may append an empty
+    // preprocessor slot before the real URL attachment finishes; arr.first alone breaks imports).
+    if let arr = json as? [[String: Any]] {
+      for obj in arr {
+        if let url = obj["url"] as? String, url.hasPrefix("http") {
+          var result: [String: Any] = ["type": "weburl", "value": url]
+          if let meta = obj["meta"] as? String, !meta.isEmpty {
+            result["meta"] = meta
+            NSLog("[SharedItemsModule] Including meta from preprocessor (\(meta.prefix(80))...)")
+          }
+          completion(result)
+          return
         }
-        completion(result)
-        return
-      }
-      if let webUrl = first["webUrl"] as? String, webUrl.hasPrefix("http") {
-        var result: [String: Any] = ["type": "weburl", "value": webUrl]
-        if let meta = first["meta"] as? String, !meta.isEmpty {
-          result["meta"] = meta
+        if let webUrl = obj["webUrl"] as? String, webUrl.hasPrefix("http") {
+          var result: [String: Any] = ["type": "weburl", "value": webUrl]
+          if let meta = obj["meta"] as? String, !meta.isEmpty {
+            result["meta"] = meta
+          }
+          completion(result)
+          return
         }
-        completion(result)
-        return
-      }
-      if let path = first["path"] as? String, path.hasPrefix("file://") {
-        completion(["type": "file", "value": path])
-        return
+        if let path = obj["path"] as? String, path.hasPrefix("file://") {
+          completion(["type": "file", "value": path])
+          return
+        }
       }
     }
 
