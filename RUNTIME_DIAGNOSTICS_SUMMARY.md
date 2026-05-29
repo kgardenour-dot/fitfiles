@@ -14,17 +14,17 @@ Added containerURL verification logs **before every UserDefaults write** in thes
 
 **Log format:**
 ```swift
-let groupId = "group.com.banditinnovations.fitlinks"
+let groupId = "group.com.banditinnovations.cheflinks"
 let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
 NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
 ```
 
-### 2. Host App Diagnostics (`ios/FitLinks/SharedItemsModule.swift`)
+### 2. Host App Diagnostics (`ios/ChefLinks/SharedItemsModule.swift`)
 
 Added containerURL verification at the **start of `getSharedPayload()`** method (line ~14):
 
 ```swift
-let groupId = "group.com.banditinnovations.fitlinks"
+let groupId = "group.com.banditinnovations.cheflinks"
 let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
 NSLog("[SharedItemsModule] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
 ```
@@ -36,7 +36,7 @@ Created automated script that:
 - Extracts signed entitlements using `codesign`
 - Verifies presence of:
   - `com.apple.security.application-groups`
-  - `group.com.banditinnovations.fitlinks`
+  - `group.com.banditinnovations.cheflinks`
 - Provides clear ✅/❌ status for each target
 
 **Usage:**
@@ -99,7 +99,7 @@ xcrun devicectl device observe logs | grep -E 'ShareViewController|SharedItemsMo
 **Device - Test Share:**
 1. Open Safari/Chrome
 2. Navigate to any workout URL
-3. Tap Share → FitLinks
+3. Tap Share → ChefLinks
 
 **Watch for:**
 ```
@@ -127,18 +127,18 @@ xcrun devicectl device observe logs | grep -E 'ShareViewController|SharedItemsMo
 ## 📊 Expected Log Output (Success Case)
 
 ```
-[ShareViewController] 📦 AppGroup containerURL: file:///private/var/mobile/Containers/Shared/AppGroup/... for group.com.banditinnovations.fitlinks
+[ShareViewController] 📦 AppGroup containerURL: file:///private/var/mobile/Containers/Shared/AppGroup/... for group.com.banditinnovations.cheflinks
 [ShareViewController] ✅ Writing URL to UserDefaults
-[ShareViewController] Suite: group.com.banditinnovations.fitlinks
-[ShareViewController] Key: fitlinksShareKey
+[ShareViewController] Suite: group.com.banditinnovations.cheflinks
+[ShareViewController] Key: cheflinksShareKey
 [ShareViewController] URL: https://example.com/workout/123
 [ShareViewController] Payload length: 156 bytes
 [ShareViewController] Payload preview: [{"url":"https://example.com/workout/123","meta":""}]
 
-[SharedItemsModule] 📦 AppGroup containerURL: file:///private/var/mobile/Containers/Shared/AppGroup/... for group.com.banditinnovations.fitlinks
+[SharedItemsModule] 📦 AppGroup containerURL: file:///private/var/mobile/Containers/Shared/AppGroup/... for group.com.banditinnovations.cheflinks
 [SharedItemsModule] 📖 Reading from UserDefaults
-[SharedItemsModule] Suite: group.com.banditinnovations.fitlinks
-[SharedItemsModule] Key: fitlinksShareKey
+[SharedItemsModule] Suite: group.com.banditinnovations.cheflinks
+[SharedItemsModule] Key: cheflinksShareKey
 [SharedItemsModule] Type hint: nil
 [SharedItemsModule] ✅ Payload exists
 [SharedItemsModule] Payload type: Data, length: 156 bytes
@@ -148,7 +148,7 @@ xcrun devicectl device observe logs | grep -E 'ShareViewController|SharedItemsMo
 ## 🚨 Failure Case Log Output
 
 ```
-[ShareViewController] 📦 AppGroup containerURL: nil for group.com.banditinnovations.fitlinks
+[ShareViewController] 📦 AppGroup containerURL: nil for group.com.banditinnovations.cheflinks
 [ShareViewController] ✅ Writing URL to UserDefaults  ← WRITES TO WRONG LOCATION!
 ```
 
@@ -156,13 +156,13 @@ OR
 
 ```
 [ShareViewController] 📦 AppGroup containerURL: file://...  ← Extension OK
-[SharedItemsModule] 📦 AppGroup containerURL: nil for group.com.banditinnovations.fitlinks  ← Host FAILS!
+[SharedItemsModule] 📦 AppGroup containerURL: nil for group.com.banditinnovations.cheflinks  ← Host FAILS!
 ```
 
 ## 📝 Files Modified
 
 1. `ios/ShareExtension/ShareViewController.swift` - Added 6 containerURL logs
-2. `ios/FitLinks/SharedItemsModule.swift` - Added 1 containerURL log
+2. `ios/ChefLinks/SharedItemsModule.swift` - Added 1 containerURL log
 3. `verify-app-groups-runtime.sh` - New verification script
 4. `APP_GROUPS_VERIFICATION.md` - New testing guide
 5. `RUNTIME_DIAGNOSTICS_SUMMARY.md` - This file

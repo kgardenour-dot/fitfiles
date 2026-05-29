@@ -12,7 +12,7 @@
 
 ## 🎯 The Problem
 
-When sharing a URL from Safari or Chrome on iOS device using the FitLinks share extension, the Import screen opens but the URL field is empty. This prevents users from saving shared workout links.
+When sharing a URL from Safari or Chrome on iOS device using the ChefLinks share extension, the Import screen opens but the URL field is empty. This prevents users from saving shared workout links.
 
 ## 🔍 Root Cause Analysis
 
@@ -35,7 +35,7 @@ Logs include:
 - Payload type and size
 - Payload preview (first 120 chars)
 
-#### Host App (`ios/FitLinks/SharedItemsModule.swift`)
+#### Host App (`ios/ChefLinks/SharedItemsModule.swift`)
 Added detailed logging for ALL read operations:
 - Read attempts
 - Payload existence checks
@@ -68,8 +68,8 @@ Automated script that:
 
 ### 3. App Group Verification
 
-Confirmed consistent use of `group.com.banditinnovations.fitlinks` across:
-- ✅ FitLinks.entitlements
+Confirmed consistent use of `group.com.banditinnovations.cheflinks` across:
+- ✅ ChefLinks.entitlements
 - ✅ ShareExtension.entitlements
 - ✅ ShareViewController.swift
 - ✅ SharedItemsModule.swift
@@ -84,7 +84,7 @@ Confirmed consistent use of `group.com.banditinnovations.fitlinks` across:
    ./verify-app-groups.sh
    ```
    
-   In Xcode that opens, verify BOTH targets have App Groups capability with `group.com.banditinnovations.fitlinks`
+   In Xcode that opens, verify BOTH targets have App Groups capability with `group.com.banditinnovations.cheflinks`
 
 2. **Clean and Rebuild**
    ```bash
@@ -93,7 +93,7 @@ Confirmed consistent use of `group.com.banditinnovations.fitlinks` across:
    ```
 
 3. **Test the Share Flow**
-   - Open Safari → Share a URL → FitLinks
+   - Open Safari → Share a URL → ChefLinks
    - Watch Xcode console for logs
    - Check Import screen debug panel
 
@@ -142,10 +142,10 @@ If the issue persists after first setup:
    Log: [SharedItemsModule] ✅ Payload exists
    ↓
 7. React receives payload
-   Log: [FitLinks] getSharedPayload result: { type: 'weburl', value: '...' }
+   Log: [ChefLinks] getSharedPayload result: { type: 'weburl', value: '...' }
    ↓
 8. Import screen state updates
-   Log: [FitLinks] Setting URL from payload
+   Log: [ChefLinks] Setting URL from payload
    ↓
 9. Import screen UI shows URL
    Debug panel displays all parameters
@@ -159,7 +159,7 @@ If the issue persists after first setup:
 |-------------------|-----------|-------------------|
 | [ShareViewController] logs | Xcode Console | Extension crashing or not activated |
 | [SharedItemsModule] logs | Xcode Console | **App Groups not configured** |
-| [FitLinks] logs | Metro Console | Bridge issue or React not loading |
+| [ChefLinks] logs | Metro Console | Bridge issue or React not loading |
 | Debug panel | Import screen | Not in DEV mode or UI issue |
 | URL in field | Import screen | State update issue or render problem |
 
@@ -212,7 +212,7 @@ If you're still stuck after following all guides, provide these 5 items:
 
 ### Native iOS
 - `ios/ShareExtension/ShareViewController.swift` - Added comprehensive write logging
-- `ios/FitLinks/SharedItemsModule.swift` - Added comprehensive read logging
+- `ios/ChefLinks/SharedItemsModule.swift` - Added comprehensive read logging
 
 ### React Native
 - `app/import.tsx` - Enhanced logging and debug panel

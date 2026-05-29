@@ -6,8 +6,8 @@
 ```
 
 In Xcode that opens:
-- [ ] FitLinks target → Signing & Capabilities → App Groups → `group.com.banditinnovations.fitlinks` ✅
-- [ ] ShareExtension target → Signing & Capabilities → App Groups → `group.com.banditinnovations.fitlinks` ✅
+- [ ] ChefLinks target → Signing & Capabilities → App Groups → `group.com.banditinnovations.cheflinks` ✅
+- [ ] ShareExtension target → Signing & Capabilities → App Groups → `group.com.banditinnovations.cheflinks` ✅
 
 ## 2️⃣ Clean & Rebuild
 ```bash
@@ -17,7 +17,7 @@ npx expo run:ios --device
 
 ## 3️⃣ Test Share
 1. Open Safari → `https://www.youtube.com/watch?v=dQw4w9WgXcQ`
-2. Tap Share → FitLinks
+2. Tap Share → ChefLinks
 3. Watch Xcode console for logs
 
 ## 4️⃣ Check Logs
@@ -36,8 +36,8 @@ npx expo run:ios --device
 
 ### ✅ Expected: Import screen (Metro console)
 ```
-[FitLinks] CONSUME share { sharedKey: 'fitlinksShareKey' }
-[FitLinks] getSharedPayload result: { type: 'weburl', value: 'https://...' }
+[ChefLinks] CONSUME share { sharedKey: 'cheflinksShareKey' }
+[ChefLinks] getSharedPayload result: { type: 'weburl', value: 'https://...' }
 ```
 
 ### ✅ Expected: Import screen UI

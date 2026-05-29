@@ -1,42 +1,42 @@
 export const Colors = {
-  // Primary palette
-  primary: '#3B82F6',         // Ice Blue — main interactive color
-  primaryDark: '#2563EB',     // Darker blue for pressed states
-  primaryLight: '#60A5FA',    // Lighter blue for hover/highlights
-  background: '#0B1220',      // Midnight Navy — app background
-  surface: '#111B2E',         // Slightly lifted navy for surfaces
-  surfaceLight: '#1A2740',    // Lighter navy for elevated elements
-  card: '#152233',            // Card background
-  text: '#F1F5F9',            // Soft Fog — primary text
-  textSecondary: '#94A3B8',   // Muted fog — secondary text
-  textMuted: '#475569',       // Dimmed — hint text
-  accent: '#5EEAD4',          // Aqua Mint — secondary accent
-  success: '#5EEAD4',         // Aqua Mint — success states
-  warning: '#F97316',         // Sunset Orange — warnings
-  border: '#1E293B',          // Dark navy border
-  inputBg: '#111B2E',        // Same as surface
-  chipBg: '#1E293B',          // Border-like dark
-  chipActive: '#3B82F6',      // Ice Blue — active chips
-  overlay: 'rgba(11,18,32,0.7)',
-  favorite: '#FB7185',        // Coral Pulse — favorites/hearts
+  // ChefLinks palette
+  primary: '#4C8A67',          // Primary green
+  primaryDark: '#2A2F2C',      // Dark forest for pressed states
+  primaryLight: '#E7EFEA',     // Light neutral highlights
+  background: '#FAF4EA',       // Warm cream background
+  surface: '#E7EFEA',          // Light neutral surface
+  surfaceLight: '#FAF4EA',     // Elevated light surface
+  card: '#FFFFFF',             // Card surface on warm background
+  text: '#2A2F2C',             // Dark forest text
+  textSecondary: '#4C8A67',    // Primary green for secondary text
+  textMuted: '#6B756F',        // Muted neutral
+  accent: '#D95C45',           // Tomato red accent
+  success: '#4C8A67',          // Success uses brand green
+  warning: '#E7B75F',          // Honey gold warning
+  border: '#D7DED9',           // Soft neutral border
+  inputBg: '#FFFFFF',          // Inputs on warm background
+  chipBg: '#E7EFEA',           // Neutral chip background
+  chipActive: '#4C8A67',       // Active chip uses primary green
+  overlay: 'rgba(42,47,44,0.35)',
+  favorite: '#D95C45',         // Tomato red favorites
 
   // Extended palette (for category tags, charts, decorations)
-  coralPulse: '#FB7185',
-  softMagenta: '#EC4899',
-  sunsetOrange: '#F97316',
-  sunriseYellow: '#FACC15',
-  iceBlue: '#3B82F6',
-  aquaMint: '#5EEAD4',
-  lavender: '#A78BFA',
+  coralPulse: '#D95C45',
+  softMagenta: '#D95C45',
+  sunsetOrange: '#D95C45',
+  sunriseYellow: '#E7B75F',
+  iceBlue: '#E7EFEA',
+  aquaMint: '#4C8A67',
+  lavender: '#E7EFEA',
 
   // Functional accents
-  buttonPrimary: '#FB7185',     // Coral — main CTA buttons
-  buttonPrimaryDark: '#E11D48', // Pressed coral
-  tabActive: '#5EEAD4',         // Aqua Mint — active tab
-  headerAccent: '#60A5FA',      // Light blue for header elements
-  cardBorder: '#1E293B',
-  inputBorder: '#2D3A50',       // Slightly brighter input borders
-  inputFocusBorder: '#5EEAD4',  // Aqua on focus
+  buttonPrimary: '#D95C45',     // Tomato red CTA
+  buttonPrimaryDark: '#B64B39', // Pressed tomato
+  tabActive: '#4C8A67',         // Primary green active tab
+  headerAccent: '#4C8A67',      // Green header accents
+  cardBorder: '#D7DED9',
+  inputBorder: '#C8D1CB',
+  inputFocusBorder: '#4C8A67',
 };
 
 export const Spacing = {

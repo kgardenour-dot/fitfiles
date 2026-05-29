@@ -4,22 +4,22 @@
 
 ### Step 1: Open Xcode Workspace
 ```bash
-open ios/FitLinks.xcworkspace
+open ios/ChefLinks.xcworkspace
 ```
 
 ### Step 2: Verify Main App Target
 1. In Xcode project navigator, select the project (blue icon at top)
-2. Under **TARGETS**, select **FitLinks** (main app target)
+2. Under **TARGETS**, select **ChefLinks** (main app target)
 3. Click **Signing & Capabilities** tab
 4. Verify **App Groups** capability exists
-5. Verify it includes exactly: `group.com.banditinnovations.fitlinks`
+5. Verify it includes exactly: `group.com.banditinnovations.cheflinks`
 6. ✅ If missing or different, add/fix the capability
 
 ### Step 3: Verify Share Extension Target
 1. Under **TARGETS**, select **ShareExtension** target
 2. Click **Signing & Capabilities** tab
 3. Verify **App Groups** capability exists
-4. Verify it includes exactly: `group.com.banditinnovations.fitlinks`
+4. Verify it includes exactly: `group.com.banditinnovations.cheflinks`
 5. ✅ If missing or different, add/fix the capability
 
 **CRITICAL**: Both targets MUST have the exact same App Group identifier.
@@ -28,11 +28,11 @@ open ios/FitLinks.xcworkspace
 
 The entitlements files are already correctly configured:
 
-### Main App: `ios/FitLinks/FitLinks.entitlements`
+### Main App: `ios/ChefLinks/ChefLinks.entitlements`
 ```xml
 <key>com.apple.security.application-groups</key>
 <array>
-  <string>group.com.banditinnovations.fitlinks</string>
+  <string>group.com.banditinnovations.cheflinks</string>
 </array>
 ```
 
@@ -40,7 +40,7 @@ The entitlements files are already correctly configured:
 ```xml
 <key>com.apple.security.application-groups</key>
 <array>
-  <string>group.com.banditinnovations.fitlinks</string>
+  <string>group.com.banditinnovations.cheflinks</string>
 </array>
 ```
 
@@ -81,14 +81,14 @@ npx expo run:ios --device
 
 1. **Test from Safari**:
    - Open a YouTube URL in Safari
-   - Tap Share → FitLinks
+   - Tap Share → ChefLinks
    - Observe console logs for write operation
    - Should redirect to Import screen
    - Check Import screen debug panel
 
 2. **Test from Chrome**:
    - Open a YouTube URL in Chrome
-   - Tap Share → FitLinks
+   - Tap Share → ChefLinks
    - Observe console logs for write operation
    - Should redirect to Import screen
    - Check Import screen debug panel
@@ -98,8 +98,8 @@ npx expo run:ios --device
 **In Share Extension (write):**
 ```
 [ShareViewController] ✅ Writing to UserDefaults
-[ShareViewController] Suite: group.com.banditinnovations.fitlinks
-[ShareViewController] Key: fitlinksShareKey
+[ShareViewController] Suite: group.com.banditinnovations.cheflinks
+[ShareViewController] Key: cheflinksShareKey
 [ShareViewController] Payload length: 156 bytes
 [ShareViewController] Payload preview: [{"url":"https://www.youtube.com/watch?v=...
 ```
@@ -107,15 +107,15 @@ npx expo run:ios --device
 **In Main App (read):**
 ```
 [SharedItemsModule] 📖 Reading from UserDefaults
-[SharedItemsModule] Suite: group.com.banditinnovations.fitlinks
-[SharedItemsModule] Key: fitlinksShareKey
+[SharedItemsModule] Suite: group.com.banditinnovations.cheflinks
+[SharedItemsModule] Key: cheflinksShareKey
 [SharedItemsModule] Payload exists: true
 [SharedItemsModule] Payload length: 156 bytes
 ```
 
 **In Import Screen:**
 Debug panel should show:
-- sharedKey: fitlinksShareKey
+- sharedKey: cheflinksShareKey
 - shareNonce: <timestamp>
 - URL populated in input field
 

@@ -55,7 +55,7 @@ START: Clean build on device
                                      │      Cause: Provisioning profile or Team mismatch
                                      │      Solution:
                                      │      1. Open Xcode
-                                     │      2. Select FitLinks target
+                                     │      2. Select ChefLinks target
                                      │      3. Verify Team matches extension
                                      │      4. Delete derived data
                                      │      5. Clean build
@@ -91,8 +91,8 @@ START: Clean build on device
                                                    1. Compare WRITE logs from extension
                                                    2. Compare READ logs from host
                                                    3. Verify keys match exactly:
-                                                      • Extension: sharedKey = "fitlinksShareKey"
-                                                      • Host: reads "fitlinksShareKey"
+                                                      • Extension: sharedKey = "cheflinksShareKey"
+                                                      • Host: reads "cheflinksShareKey"
                                                    4. Check containerURL paths match
                                                       (same AppGroup UUID in both)
                                                    │
@@ -166,11 +166,11 @@ START: Clean build on device
 If containerURL = nil in BOTH targets after trying everything:
 
 1. Go to: https://developer.apple.com/account/resources/identifiers/list
-2. Find your App ID (com.banditinnovations.fitlinks)
+2. Find your App ID (com.banditinnovations.cheflinks)
 3. Click Edit
 4. Verify "App Groups" capability is ENABLED
 5. Click "Configure" next to App Groups
-6. Verify "group.com.banditinnovations.fitlinks" is CHECKED
+6. Verify "group.com.banditinnovations.cheflinks" is CHECKED
 7. Save changes
 8. Go to Provisioning Profiles
 9. DELETE old profiles for both app and extension

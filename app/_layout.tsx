@@ -1,18 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Stack, useRouter, useSegments, useGlobalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import * as Linking from 'expo-linking';
-import { ShareIntentProvider } from 'expo-share-intent';
 import { supabase } from '../src/lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Colors } from '../src/constants/theme';
-import { useShareIntake } from '../src/hooks/useShareIntake';
 import { WorkoutsProvider } from '../src/contexts/WorkoutsContext';
+import { CollectionsProvider } from '../src/contexts/CollectionsContext';
+import { PurchasesProvider } from '../src/contexts/PurchasesContext';
 import { getPendingRedirect, setPendingRedirect, clearPendingRedirect } from '../src/utils/pendingRedirect';
 import { normalizeShareUrl } from '../src/utils/url';
 import { shouldHandleLegacyShare } from '../src/utils/shareGate';
-import { configureRevenueCat } from '../src/lib/revenuecat';
+import { ErrorBoundary } from '../src/components/ErrorBoundary';
 
 function pickParam(value: unknown): string | undefined {
   if (value == null) return undefined;
@@ -37,29 +37,52 @@ export default function RootLayout() {
     shareNonce?: string;
   }>();
   const hasStoredRedirectRef = useRef(false);
+  const loadingRef = useRef(loading);
+  const sessionRef = useRef(session);
+  const pendingShareLaunchUrlRef = useRef<string | null>(null);
+  loadingRef.current = loading;
+  sessionRef.current = session;
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setLoading(false);
+    let cancelled = false;
+
+    supabase.auth
+      .getSession()
+      .then((result) => {
+        if (cancelled) return;
+        const s = result.data?.session ?? null;
+        setSession(s);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error('[ChefLinks] getSession failed', err);
+        if (!cancelled) {
+          setSession(null);
+          setLoading(false);
+        }
+      });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, s) => {
+      if (!cancelled) setSession(s);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
-      setSession(s);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  useEffect(() => {
-    void configureRevenueCat(session?.user?.id ?? null);
-  }, [session?.user?.id]);
-
-  // Single owner for legacy share navigation (cold + warm). +not-found does NOT navigate for legacy shares.
-  useEffect(() => {
-    const handleUrl = (url: string | null) => {
+  const processShareLaunchUrl = useCallback(
+    (url: string | null) => {
       if (!url) return;
-      if (loading) return;
+      // Auth bootstrap still running — queue and flush once loading is false so we never drop
+      // cheflinks://dataUrl=… from a stale async closure or getInitialURL racing getSession.
+      if (loadingRef.current) {
+        pendingShareLaunchUrlRef.current = url;
+        return;
+      }
 
       const norm = normalizeShareUrl(url);
       if (!norm?.sharedKey) return;
@@ -73,25 +96,39 @@ export default function RootLayout() {
         shareNonce,
       };
 
-      if (!session) {
-        setPendingRedirect({ pathname: '/import', params: importParams });
+      const activeSession = sessionRef.current;
+      if (!activeSession?.user?.id) {
+        void setPendingRedirect({ pathname: '/import', params: importParams });
         return;
       }
 
-      console.log('[FitLinks] NAV to import', { sharedKey: norm.sharedKey, shareNonce });
+      console.log('[ChefLinks] NAV to import', { sharedKey: norm.sharedKey, shareNonce });
       router.replace({
         pathname: '/import',
         params: importParams,
       });
-    };
+    },
+    [router]
+  );
 
+  // Flush share URL captured while loading was still true (common on cold start from Share Extension).
+  useEffect(() => {
+    if (loading) return;
+    const pending = pendingShareLaunchUrlRef.current;
+    if (!pending) return;
+    pendingShareLaunchUrlRef.current = null;
+    processShareLaunchUrl(pending);
+  }, [loading, processShareLaunchUrl]);
+
+  // Single owner for legacy share navigation (cold + warm). +not-found does NOT navigate for legacy shares.
+  useEffect(() => {
     // Cold start: check the URL that launched the app
-    Linking.getInitialURL().then(handleUrl);
+    void Linking.getInitialURL().then(processShareLaunchUrl);
 
     // Warm start: listen for incoming URL events
-    const sub = Linking.addEventListener('url', (event) => handleUrl(event.url));
+    const sub = Linking.addEventListener('url', (event) => processShareLaunchUrl(event.url));
     return () => sub.remove();
-  }, [router, session, loading]);
+  }, [processShareLaunchUrl]);
 
   // Redirect based on auth state — this ensures logout always works
   useEffect(() => {
@@ -141,23 +178,28 @@ export default function RootLayout() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
-        <ActivityIndicator size="large" color={Colors.coralPulse} />
-      </View>
+      <ErrorBoundary>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
+          <ActivityIndicator size="large" color={Colors.coralPulse} />
+        </View>
+      </ErrorBoundary>
     );
   }
 
   return (
-    <ShareIntentProvider>
-      <WorkoutsProvider>
-        <RootStack session={session} />
-      </WorkoutsProvider>
-    </ShareIntentProvider>
+    <ErrorBoundary>
+      <PurchasesProvider userId={session?.user?.id ?? null}>
+        <WorkoutsProvider>
+          <CollectionsProvider>
+            <RootStack />
+          </CollectionsProvider>
+        </WorkoutsProvider>
+      </PurchasesProvider>
+    </ErrorBoundary>
   );
 }
 
-function RootStack({ session }: { session: Session | null }) {
-  useShareIntake(session);
+function RootStack() {
   return (
     <>
       <StatusBar style="light" />
@@ -170,7 +212,7 @@ function RootStack({ session }: { session: Session | null }) {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
-          name="workout/[id]"
+          name="recipe/[id]"
           options={{ headerShown: false, presentation: 'card' }}
         />
         <Stack.Screen

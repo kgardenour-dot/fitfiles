@@ -116,7 +116,7 @@ export default function CollectionDetailScreen() {
           <View>
             <WorkoutCard
               workout={item}
-              onPress={() => router.push(`/workout/${item.id}`)}
+              onPress={() => router.push(`/recipe/${item.id}`)}
               onFavorite={() => {}}
             />
             <TouchableOpacity
@@ -131,8 +131,8 @@ export default function CollectionDetailScreen() {
           <View style={styles.emptyWrap}>
             <EmptyState
               icon="folder-open-outline"
-              title="No workouts in this collection yet"
-              subtitle="Add workouts from their detail screen or import new ones"
+              title="No recipes in this collection yet"
+              subtitle="Add recipes from their detail screen or import new ones"
             />
             <TouchableOpacity
               style={styles.emptyImportBtn}
@@ -140,7 +140,7 @@ export default function CollectionDetailScreen() {
               activeOpacity={0.7}
             >
               <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.emptyImportBtnText}>Import workout</Text>
+              <Text style={styles.emptyImportBtnText}>Import recipe</Text>
             </TouchableOpacity>
           </View>
         }

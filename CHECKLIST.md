@@ -11,7 +11,7 @@
   - [x] Added write logging for video shares (handleVideos)
   - [x] Added write logging for file shares (handleFileURL)
 
-- [x] `ios/FitLinks/SharedItemsModule.swift`
+- [x] `ios/ChefLinks/SharedItemsModule.swift`
   - [x] Added read logging in getSharedPayload (suite, key, type)
   - [x] Added payload existence verification logging
   - [x] Added payload type and size logging
@@ -35,38 +35,38 @@
 ## Code Verification
 
 ### App Group Identifier Consistency
-- [x] ShareViewController.swift uses: `group.com.banditinnovations.fitlinks`
-- [x] SharedItemsModule.swift uses: `group.com.banditinnovations.fitlinks`
-- [x] FitLinks.entitlements contains: `group.com.banditinnovations.fitlinks`
-- [x] ShareExtension.entitlements contains: `group.com.banditinnovations.fitlinks`
-- [x] app.json references: `group.com.banditinnovations.fitlinks`
+- [x] ShareViewController.swift uses: `group.com.banditinnovations.cheflinks`
+- [x] SharedItemsModule.swift uses: `group.com.banditinnovations.cheflinks`
+- [x] ChefLinks.entitlements contains: `group.com.banditinnovations.cheflinks`
+- [x] ShareExtension.entitlements contains: `group.com.banditinnovations.cheflinks`
+- [x] app.json references: `group.com.banditinnovations.cheflinks`
 
 ### Share Key Consistency
-- [x] ShareViewController.swift writes to: `fitlinksShareKey`
-- [x] SharedItemsModule.swift reads from: `fitlinksShareKey` (passed as parameter)
-- [x] Import screen passes: `fitlinksShareKey` (from params)
+- [x] ShareViewController.swift writes to: `cheflinksShareKey`
+- [x] SharedItemsModule.swift reads from: `cheflinksShareKey` (passed as parameter)
+- [x] Import screen passes: `cheflinksShareKey` (from params)
 
 ### Debug Logging Format
 All logs follow consistent format:
 - [x] Share extension: `[ShareViewController]` prefix
 - [x] Host app: `[SharedItemsModule]` prefix
-- [x] Import screen: `[FitLinks]` prefix
+- [x] Import screen: `[ChefLinks]` prefix
 - [x] Visual indicators: ✅ (success), ❌ (error), ⚠️ (warning), 📖 (info)
 
 ## Testing Checklist
 
 ### Pre-Test Setup
 - [ ] Run `./verify-app-groups.sh` to open Xcode
-- [ ] Verify FitLinks target has App Groups capability
+- [ ] Verify ChefLinks target has App Groups capability
 - [ ] Verify ShareExtension target has App Groups capability
-- [ ] Verify both use same group ID: `group.com.banditinnovations.fitlinks`
+- [ ] Verify both use same group ID: `group.com.banditinnovations.cheflinks`
 - [ ] Clean build: `rm -rf ios/build`
 - [ ] Rebuild: `npx expo run:ios --device`
 
 ### Test 1: Safari Share
 - [ ] Open Safari on device
 - [ ] Navigate to test URL (e.g., YouTube video)
-- [ ] Tap Share → FitLinks
+- [ ] Tap Share → ChefLinks
 - [ ] Observe Xcode console for write logs
 - [ ] App redirects to Import screen
 - [ ] Observe Xcode console for read logs
@@ -78,7 +78,7 @@ All logs follow consistent format:
 ### Test 2: Chrome Share
 - [ ] Open Chrome on device
 - [ ] Navigate to test URL
-- [ ] Tap Share → FitLinks
+- [ ] Tap Share → ChefLinks
 - [ ] Observe Xcode console for write logs
 - [ ] App redirects to Import screen
 - [ ] Observe Xcode console for read logs
@@ -101,8 +101,8 @@ All logs follow consistent format:
 ### Xcode Console - Share Extension
 ```
 [ShareViewController] ✅ Writing URL to UserDefaults
-[ShareViewController] Suite: group.com.banditinnovations.fitlinks
-[ShareViewController] Key: fitlinksShareKey
+[ShareViewController] Suite: group.com.banditinnovations.cheflinks
+[ShareViewController] Key: cheflinksShareKey
 [ShareViewController] URL: https://www.youtube.com/watch?v=...
 [ShareViewController] Payload length: 156 bytes
 [ShareViewController] Payload preview: [{"url":"https://www.youtube.com/watch?v=...
@@ -111,8 +111,8 @@ All logs follow consistent format:
 ### Xcode Console - Host App
 ```
 [SharedItemsModule] 📖 Reading from UserDefaults
-[SharedItemsModule] Suite: group.com.banditinnovations.fitlinks
-[SharedItemsModule] Key: fitlinksShareKey
+[SharedItemsModule] Suite: group.com.banditinnovations.cheflinks
+[SharedItemsModule] Key: cheflinksShareKey
 [SharedItemsModule] Type hint: weburl
 [SharedItemsModule] ✅ Payload exists
 [SharedItemsModule] Payload type: Data, length: 156 bytes
@@ -121,16 +121,16 @@ All logs follow consistent format:
 
 ### Metro Console - React Native
 ```
-[FitLinks] CONSUME share { sharedKey: 'fitlinksShareKey', shareNonce: '1708473521000' }
-[FitLinks] getSharedPayload result: { type: 'weburl', value: 'https://www.youtube.com/watch?v=...' }
-[FitLinks] Payload value: https://www.youtube.com/watch?v=...
-[FitLinks] Setting URL from payload
+[ChefLinks] CONSUME share { sharedKey: 'cheflinksShareKey', shareNonce: '1708473521000' }
+[ChefLinks] getSharedPayload result: { type: 'weburl', value: 'https://www.youtube.com/watch?v=...' }
+[ChefLinks] Payload value: https://www.youtube.com/watch?v=...
+[ChefLinks] Setting URL from payload
 ```
 
 ### Import Screen Debug Panel
 ```
 🔍 Share Debug Info
-sharedKey: fitlinksShareKey
+sharedKey: cheflinksShareKey
 sharedType: weburl
 shareNonce: 1708473521000
 sourceUrl: —
@@ -153,7 +153,7 @@ Issue: Nothing appears in any console
 Issue: No `[ShareViewController]` logs appear
 - [ ] Share extension may be crashing
 - [ ] Check Xcode for crash logs
-- [ ] Check FitLinks appears in Share sheet
+- [ ] Check ChefLinks appears in Share sheet
 - [ ] Check share extension Info.plist is correct
 
 ### Path 3: Write Logs But No Read Logs

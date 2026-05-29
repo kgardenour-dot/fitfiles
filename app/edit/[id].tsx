@@ -126,7 +126,7 @@ export default function EditWorkoutScreen() {
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="close" size={28} color={Colors.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Edit Workout</Text>
+          <Text style={styles.headerTitle}>Edit Recipe</Text>
           <View style={{ width: 28 }} />
         </View>
 
@@ -138,7 +138,7 @@ export default function EditWorkoutScreen() {
             style={styles.input}
             value={title}
             onChangeText={setTitle}
-            placeholder="Workout title"
+            placeholder="Recipe title"
             placeholderTextColor={Colors.textMuted}
           />
 

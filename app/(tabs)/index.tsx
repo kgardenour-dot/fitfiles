@@ -25,7 +25,7 @@ import { ConfettiDots } from '../../src/components/ConfettiDots';
 import { supabase } from '../../src/lib/supabase';
 import { WorkoutLinkWithTags } from '../../src/types/database';
 
-const SAVE_TUTORIAL_SEEN_KEY = 'fitlinks:save-link-tutorial-seen:v1';
+const SAVE_TUTORIAL_SEEN_KEY = 'cheflinks_save_link_tutorial_seen_v1';
 
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = React.useState(value);
@@ -63,10 +63,25 @@ function normalizeSearchResults(data: unknown): WorkoutLinkWithTags[] {
 
   return data.map((item) => {
     const row = (item ?? {}) as Record<string, unknown>;
-    const tags = Array.isArray(row.tags) ? row.tags : [];
+    const tags = (Array.isArray(row.tags) ? row.tags : []).filter(
+      (tag): tag is WorkoutLinkWithTags['tags'][number] => Boolean(tag && typeof tag === 'object'),
+    );
     return {
-      ...(row as WorkoutLinkWithTags),
-      tags: tags as WorkoutLinkWithTags['tags'],
+      id: typeof row.id === 'string' ? row.id : '',
+      user_id: typeof row.user_id === 'string' ? row.user_id : '',
+      url: typeof row.url === 'string' ? row.url : '',
+      title: typeof row.title === 'string' ? row.title : '',
+      source_domain: typeof row.source_domain === 'string' ? row.source_domain : '',
+      thumbnail_url: typeof row.thumbnail_url === 'string' ? row.thumbnail_url : null,
+      notes: typeof row.notes === 'string' ? row.notes : null,
+      duration_minutes:
+        typeof row.duration_minutes === 'number' ? row.duration_minutes : null,
+      is_favorite: Boolean(row.is_favorite),
+      created_at: typeof row.created_at === 'string' ? row.created_at : '',
+      updated_at: typeof row.updated_at === 'string' ? row.updated_at : '',
+      last_opened_at:
+        typeof row.last_opened_at === 'string' ? row.last_opened_at : null,
+      tags,
     };
   });
 }
@@ -124,10 +139,6 @@ export default function LibraryScreen() {
 
   useEffect(() => {
     if (tutorialChecked || loading || isSearching) return;
-    if (workouts.length > 0) {
-      setTutorialChecked(true);
-      return;
-    }
 
     let cancelled = false;
     (async () => {
@@ -144,7 +155,7 @@ export default function LibraryScreen() {
     return () => {
       cancelled = true;
     };
-  }, [tutorialChecked, loading, isSearching, workouts.length]);
+  }, [tutorialChecked, loading, isSearching]);
 
   const dismissSaveTutorial = useCallback(async () => {
     setShowSaveTutorial(false);
@@ -177,11 +188,13 @@ export default function LibraryScreen() {
       <ConfettiDots />
       {/* Header: logo left, add button right */}
       <View style={styles.header}>
-        <Image
-          source={require('../../assets/fitlinks_logo.png')}
-          style={styles.headerLogo}
-          resizeMode="contain"
-        />
+        <View style={styles.headerLogoWrap}>
+          <Image
+            source={require('../../assets/cheflinks_logo.png')}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
+        </View>
         <TouchableOpacity
           style={styles.addBtn}
           onPress={() => router.push('/save')}
@@ -221,7 +234,6 @@ export default function LibraryScreen() {
             >
               <Text
                 style={[styles.sortChipLabel, isSelected && styles.sortChipLabelActive]}
-                includeFontPadding={false}
               >
                 {opt.label}
               </Text>
@@ -230,7 +242,7 @@ export default function LibraryScreen() {
         })}
       </ScrollView>
 
-      {/* Workout List */}
+      {/* Recipe List */}
       <FlatList
         data={listData}
         keyExtractor={(item) => item.id}
@@ -238,7 +250,7 @@ export default function LibraryScreen() {
         renderItem={({ item }) => (
           <WorkoutCard
             workout={item}
-            onPress={() => router.push(`/workout/${item.id}`)}
+            onPress={() => router.push(`/recipe/${item.id}`)}
             onFavorite={async () => {
               await toggleFavorite(item.id, item.is_favorite);
               if (isSearching) {
@@ -257,9 +269,9 @@ export default function LibraryScreen() {
               <EmptyState icon="search-outline" title="No results" subtitle="Try a different search term" />
             ) : (
               <EmptyState
-                icon="barbell-outline"
-                title="No workouts saved yet"
-                subtitle="Tap + to save your first workout link"
+                icon="restaurant-outline"
+                title="No recipes saved yet"
+                subtitle="Tap + to save your first recipe link"
               />
             )
           ) : null
@@ -279,13 +291,15 @@ export default function LibraryScreen() {
           <View style={styles.tutorialCard}>
             <Text style={styles.tutorialTitle}>How to save links</Text>
             <Text style={styles.tutorialBody}>
-              Tap the + button in the top-right, paste your workout URL, then hit Save Workout.
+              The easiest way is to share straight from the app you're watching: open the video or post in
+              YouTube, TikTok, Facebook, Instagram, and many others, tap Share, then choose ChefLinks. The link
+              imports in one step.
+            </Text>
+            <Text style={styles.tutorialBody}>
+              Prefer to paste instead? Tap + in the top-right, paste your recipe URL, then Save Recipe.
             </Text>
             <Text style={styles.tutorialBody}>
               Add a few tags when saving (like Strength, HIIT, Mobility) so searches return faster.
-            </Text>
-            <Text style={styles.tutorialBody}>
-              You can also share from apps like YouTube/Safari and choose FitLinks to import instantly.
             </Text>
 
             <TouchableOpacity
@@ -323,11 +337,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: Spacing.md,
+    minHeight: 76,
+  },
+  headerLogoWrap: {
+    width: 232,
+    height: 72,
+    overflow: 'hidden',
   },
   headerLogo: {
-    width: 280,
-    height: 109,
-    marginLeft: -Spacing.md,
+    position: 'absolute',
+    width: 312,
+    height: 312,
+    left: -48,
+    top: -112,
   },
   addBtn: {
     width: 40,
@@ -345,7 +367,7 @@ const styles = StyleSheet.create({
   },
   searchRow: {
     paddingHorizontal: Spacing.md,
-    marginTop: -2,
+    marginTop: Spacing.xs,
   },
   searchBarWrap: {
     flexDirection: 'row',

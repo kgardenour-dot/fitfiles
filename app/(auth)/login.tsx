@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Link } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { supabase } from '../../src/lib/supabase';
+import { isSupabaseConfigured, supabase } from '../../src/lib/supabase';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
 import { ConfettiDots } from '../../src/components/ConfettiDots';
 
@@ -25,6 +25,13 @@ export default function LoginScreen() {
   const handleLogin = async () => {
     if (!email || !password) {
       Alert.alert('Error', 'Please enter email and password.');
+      return;
+    }
+    if (!isSupabaseConfigured) {
+      Alert.alert(
+        'Login unavailable',
+        'This install was built without Supabase settings. In Expo, add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY for the production environment, then run a new EAS iOS build and submit to TestFlight.',
+      );
       return;
     }
     setLoading(true);
@@ -48,13 +55,13 @@ export default function LoginScreen() {
 
         {/* Logo */}
         <Image
-          source={require('../../assets/fitlinks_logo.png')}
+          source={require('../../assets/cheflinks_logo.png')}
           style={styles.logo}
           resizeMode="contain"
         />
 
         {/* Sign-in guidance */}
-        <Text style={styles.title}>Sign in to your account</Text>
+        <Text style={styles.title}>Welcome!</Text>
         <Text style={styles.subtitle}>New here? Create an account below.</Text>
 
         {/* Spacer pushes form toward the bottom */}
@@ -95,7 +102,7 @@ export default function LoginScreen() {
         <Link href="/(auth)/signup" asChild>
           <TouchableOpacity style={styles.linkBtn}>
             <Text style={styles.linkText}>
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Text style={styles.linkTextBold}>Sign Up</Text>
             </Text>
           </TouchableOpacity>
@@ -125,7 +132,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: Colors.text,
-    fontSize: FontSize.hero,
+    fontSize: FontSize.xxl,
     fontWeight: '800',
     textAlign: 'center',
   },

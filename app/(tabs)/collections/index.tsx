@@ -13,6 +13,7 @@ import {
   Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
@@ -33,7 +34,7 @@ const FOLDER_COLORS = [
   Colors.softMagenta,
 ];
 
-const COLLECTIONS_TUTORIAL_SEEN_KEY = 'fitlinks:collections-tutorial-seen:v1';
+const COLLECTIONS_TUTORIAL_SEEN_KEY = 'cheflinks_collections_tutorial_seen_v1';
 
 export default function CollectionsScreen() {
   const router = useRouter();
@@ -49,16 +50,14 @@ export default function CollectionsScreen() {
   const [tutorialChecked, setTutorialChecked] = useState(false);
   const listRef = useRef<FlatList>(null);
 
-  useEffect(() => {
-    fetchCollections();
-  }, [fetchCollections]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchCollections();
+    }, [fetchCollections]),
+  );
 
   useEffect(() => {
     if (tutorialChecked || loading) return;
-    if (collections.length > 0) {
-      setTutorialChecked(true);
-      return;
-    }
 
     let cancelled = false;
     (async () => {
@@ -75,7 +74,7 @@ export default function CollectionsScreen() {
     return () => {
       cancelled = true;
     };
-  }, [tutorialChecked, loading, collections.length]);
+  }, [tutorialChecked, loading]);
 
   const dismissCollectionsTutorial = useCallback(async () => {
     setShowCollectionsTutorial(false);
@@ -103,7 +102,6 @@ export default function CollectionsScreen() {
       await createCollection(name);
       setNewName('');
       setShowCreate(false);
-      await fetchCollections();
       listRef.current?.scrollToOffset({ offset: 0, animated: true });
     } catch (err: unknown) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Could not create collection');
@@ -113,14 +111,13 @@ export default function CollectionsScreen() {
   };
 
   const handleDelete = (id: string, name: string) => {
-    Alert.alert('Delete Collection', `Delete "${name}"? Workouts won't be deleted.`, [
+    Alert.alert('Delete Collection', `Delete "${name}"? Recipes won't be deleted.`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
           await deleteCollection(id);
-          fetchCollections();
         },
       },
     ]);
@@ -192,7 +189,7 @@ export default function CollectionsScreen() {
               <View style={styles.cardContent}>
                 <Text style={styles.cardTitle}>{item.name}</Text>
                 <Text style={styles.cardCount}>
-                  {item.workout_count ?? 0} workout{(item.workout_count ?? 0) === 1 ? '' : 's'}
+                  {item.workout_count ?? 0} recipe{(item.workout_count ?? 0) === 1 ? '' : 's'}
                 </Text>
               </View>
               <TouchableOpacity
@@ -210,7 +207,7 @@ export default function CollectionsScreen() {
               <EmptyState
                 icon="folder-open-outline"
                 title="No collections yet"
-                subtitle="Create a collection to organize your workouts"
+                subtitle="Create a collection to organize your recipes"
               />
               <TouchableOpacity
                 style={styles.emptyCreateBtn}
@@ -240,10 +237,10 @@ export default function CollectionsScreen() {
           <View style={styles.tutorialCard}>
             <Text style={styles.tutorialTitle}>Quick guide: Collections</Text>
             <Text style={styles.tutorialBody}>
-              Use collections to group workouts by goal, like Strength, Mobility, or 20-min sessions.
+              Use collections to group recipes by goal, like Strength, Mobility, or 20-min sessions.
             </Text>
             <Text style={styles.tutorialBody}>
-              Tap +, name your collection, then open a saved workout and add it to one or more collections.
+              Tap +, name your collection, then open a saved recipe and add it to one or more collections.
             </Text>
 
             <TouchableOpacity

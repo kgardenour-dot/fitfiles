@@ -1,16 +1,16 @@
--- FitLinks: Initial Schema Migration
+-- ChefLinks: Initial Schema Migration
 -- Personal workout-link library with tags, collections, and entitlements.
 
 -- ============================================================
 -- 0. Extensions
 -- ============================================================
-create extension if not exists "uuid-ossp";
+create extension if not exists "pgcrypto";
 
 -- ============================================================
 -- 1. User Profiles (subscription readiness)
 -- ============================================================
 create table public.user_profiles (
-  id          uuid primary key default uuid_generate_v4(),
+  id          uuid primary key default gen_random_uuid(),
   user_id     uuid not null references auth.users(id) on delete cascade,
   display_name text,
   plan_tier   text not null default 'free' check (plan_tier in ('free', 'pro')),
@@ -23,7 +23,7 @@ create table public.user_profiles (
 -- 2. Workout Links
 -- ============================================================
 create table public.workout_links (
-  id               uuid primary key default uuid_generate_v4(),
+  id               uuid primary key default gen_random_uuid(),
   user_id          uuid not null references auth.users(id) on delete cascade,
   url              text not null,
   title            text not null default '',
@@ -42,7 +42,7 @@ create table public.workout_links (
 -- 3. Tags
 -- ============================================================
 create table public.tags (
-  id        uuid primary key default uuid_generate_v4(),
+  id        uuid primary key default gen_random_uuid(),
   user_id   uuid not null references auth.users(id) on delete cascade,
   name      text not null,
   tag_type  text not null default 'custom'
@@ -64,7 +64,7 @@ create table public.workout_link_tags (
 -- 5. Collections
 -- ============================================================
 create table public.collections (
-  id        uuid primary key default uuid_generate_v4(),
+  id        uuid primary key default gen_random_uuid(),
   user_id   uuid not null references auth.users(id) on delete cascade,
   name      text not null,
   created_at timestamptz not null default now()
@@ -83,7 +83,7 @@ create table public.collection_items (
 -- 7. Workout Events (optional v1 — "mark as done" / "opened")
 -- ============================================================
 create table public.workout_events (
-  id              uuid primary key default uuid_generate_v4(),
+  id              uuid primary key default gen_random_uuid(),
   user_id         uuid not null references auth.users(id) on delete cascade,
   workout_link_id uuid not null references public.workout_links(id) on delete cascade,
   event_type      text not null check (event_type in ('opened', 'done')),

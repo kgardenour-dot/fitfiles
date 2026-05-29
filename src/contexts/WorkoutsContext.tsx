@@ -1,6 +1,11 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { canonicalizeUrl, extractDomain, fetchUrlMetadata } from '../lib/og-scraper';
+import {
+  isHostedWorkoutThumbnail,
+  persistWorkoutThumbnail,
+  removeWorkoutThumbnailObjects,
+} from '../lib/thumbnail-storage';
 import { WorkoutLink, WorkoutLinkWithTags, Tag } from '../types/database';
 
 export type SortOption = 'recent' | 'opened' | 'favorites';
@@ -48,6 +53,17 @@ async function resolvePersistentThumbnail(
   } catch {
     return null;
   }
+}
+
+async function maybePersistThumbnailToStorage(
+  remoteUrl: string | null | undefined,
+  userId: string,
+  workoutId: string,
+): Promise<string | null> {
+  const trimmed = remoteUrl?.trim();
+  if (!trimmed) return null;
+  const stored = await persistWorkoutThumbnail(trimmed, userId, workoutId);
+  return stored ?? trimmed;
 }
 
 export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
@@ -174,7 +190,25 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
             await supabase.from('workout_link_tags').insert(links);
           }
 
-          return { data: updated as WorkoutLink, wasDuplicate: true };
+          let result = updated as WorkoutLink;
+          if (persistentThumbnail) {
+            const storedUrl = await maybePersistThumbnailToStorage(
+              persistentThumbnail,
+              userId,
+              result.id,
+            );
+            if (storedUrl && storedUrl !== result.thumbnail_url) {
+              const { data: withThumb, error: tErr } = await supabase
+                .from('workout_links')
+                .update({ thumbnail_url: storedUrl })
+                .eq('id', result.id)
+                .select()
+                .single();
+              if (!tErr && withThumb) result = withThumb as WorkoutLink;
+            }
+          }
+
+          return { data: result, wasDuplicate: true };
         }
         throw error;
       }
@@ -190,7 +224,25 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
         if (tagError) throw tagError;
       }
 
-      return { data: data as WorkoutLink, wasDuplicate: false };
+      let result = data as WorkoutLink;
+      if (persistentThumbnail) {
+        const storedUrl = await maybePersistThumbnailToStorage(
+          persistentThumbnail,
+          userId,
+          result.id,
+        );
+        if (storedUrl && storedUrl !== result.thumbnail_url) {
+          const { data: withThumb, error: tErr } = await supabase
+            .from('workout_links')
+            .update({ thumbnail_url: storedUrl })
+            .eq('id', result.id)
+            .select()
+            .single();
+          if (!tErr && withThumb) result = withThumb as WorkoutLink;
+        }
+      }
+
+      return { data: result, wasDuplicate: false };
     },
     [],
   );
@@ -201,6 +253,12 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
       updates: Partial<Pick<WorkoutLink, 'title' | 'notes' | 'duration_minutes' | 'is_favorite' | 'thumbnail_url'>>,
       tagIds?: string[],
     ) => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) throw new Error('You must be signed in to update a workout.');
+
       const normalizedUpdates = { ...updates };
 
       if (isLocalFileUri(normalizedUpdates.thumbnail_url)) {
@@ -211,6 +269,17 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
           .single();
         const persistentThumbnail = await resolvePersistentThumbnail(row?.url ?? '', normalizedUpdates.thumbnail_url);
         normalizedUpdates.thumbnail_url = persistentThumbnail;
+      }
+
+      if (normalizedUpdates.thumbnail_url !== undefined) {
+        if (normalizedUpdates.thumbnail_url === null) {
+          await removeWorkoutThumbnailObjects(userId, id);
+        } else {
+          const thumb = normalizedUpdates.thumbnail_url;
+          if (thumb && !isHostedWorkoutThumbnail(thumb)) {
+            normalizedUpdates.thumbnail_url = await maybePersistThumbnailToStorage(thumb, userId, id);
+          }
+        }
       }
 
       const { error } = await supabase
@@ -246,6 +315,8 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
       const msg = [error.code, error.message, error.details].filter(Boolean).join(' — ');
       throw new Error(msg || 'Delete failed');
     }
+
+    await removeWorkoutThumbnailObjects(userId, id);
   }, []);
 
   const toggleFavorite = useCallback(async (id: string, current: boolean) => {

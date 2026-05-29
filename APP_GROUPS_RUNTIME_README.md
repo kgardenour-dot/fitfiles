@@ -16,13 +16,13 @@ Previous debugging showed App Groups configured in Xcode UI, but payload was sti
    - Locations: TEXT, URL, WEBURL (preprocessing), IMAGE, VIDEO, FILE handlers
    - 6 total log additions
 
-2. **Host App** (`ios/FitLinks/SharedItemsModule.swift`)
+2. **Host App** (`ios/ChefLinks/SharedItemsModule.swift`)
    - Added containerURL verification at start of `getSharedPayload()`
    - 1 log addition
 
 ### Critical Log Format
 ```swift
-let groupId = "group.com.banditinnovations.fitlinks"
+let groupId = "group.com.banditinnovations.cheflinks"
 let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
 NSLog("[ShareViewController|SharedItemsModule] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
 ```
@@ -61,7 +61,7 @@ xcrun devicectl device observe logs | grep -E 'ShareViewController|SharedItemsMo
 ### 4. Test Share
 1. Open Safari/Chrome on device
 2. Navigate to any URL
-3. Tap Share → FitLinks
+3. Tap Share → ChefLinks
 4. Watch Terminal 2
 
 ### 5. Check Critical Logs
@@ -98,19 +98,19 @@ xcrun devicectl device observe logs | grep -E 'ShareViewController|SharedItemsMo
 
 ```
 # SHARE EXTENSION WRITES:
-[ShareViewController] 📦 AppGroup containerURL: file:///private/var/mobile/Containers/Shared/AppGroup/[UUID]/group.com.banditinnovations.fitlinks for group.com.banditinnovations.fitlinks
+[ShareViewController] 📦 AppGroup containerURL: file:///private/var/mobile/Containers/Shared/AppGroup/[UUID]/group.com.banditinnovations.cheflinks for group.com.banditinnovations.cheflinks
 [ShareViewController] ✅ Writing URL to UserDefaults
-[ShareViewController] Suite: group.com.banditinnovations.fitlinks
-[ShareViewController] Key: fitlinksShareKey
+[ShareViewController] Suite: group.com.banditinnovations.cheflinks
+[ShareViewController] Key: cheflinksShareKey
 [ShareViewController] URL: https://example.com/workout/123
 [ShareViewController] Payload length: 156 bytes
 [ShareViewController] Payload preview: [{"url":"https://example.com/workout/123","meta":""}]
 
 # HOST APP READS:
-[SharedItemsModule] 📦 AppGroup containerURL: file:///private/var/mobile/Containers/Shared/AppGroup/[UUID]/group.com.banditinnovations.fitlinks for group.com.banditinnovations.fitlinks
+[SharedItemsModule] 📦 AppGroup containerURL: file:///private/var/mobile/Containers/Shared/AppGroup/[UUID]/group.com.banditinnovations.cheflinks for group.com.banditinnovations.cheflinks
 [SharedItemsModule] 📖 Reading from UserDefaults
-[SharedItemsModule] Suite: group.com.banditinnovations.fitlinks
-[SharedItemsModule] Key: fitlinksShareKey
+[SharedItemsModule] Suite: group.com.banditinnovations.cheflinks
+[SharedItemsModule] Key: cheflinksShareKey
 [SharedItemsModule] Type hint: nil
 [SharedItemsModule] ✅ Payload exists
 [SharedItemsModule] Payload type: Data, length: 156 bytes
@@ -123,9 +123,9 @@ Note: The `[UUID]` in containerURL paths should be **identical** in both logs!
 
 ### If containerURL is nil
 
-1. **Open Xcode** → FitLinks.xcodeproj
+1. **Open Xcode** → ChefLinks.xcodeproj
 2. **Check Team ID** in Signing & Capabilities for both:
-   - FitLinks target
+   - ChefLinks target
    - ShareExtension target
 3. **Verify same Team** for both
 4. **Check App Groups** capability shows ✅ (not ⚠️)
@@ -133,7 +133,7 @@ Note: The `[UUID]` in containerURL paths should be **identical** in both logs!
    - Go to Certificates, IDs & Profiles
    - Find App ID
    - Verify App Groups enabled
-   - Verify `group.com.banditinnovations.fitlinks` included
+   - Verify `group.com.banditinnovations.cheflinks` included
 6. **Regenerate profiles:**
    - Delete provisioning profiles in Xcode
    - Let Xcode regenerate automatically
@@ -149,8 +149,8 @@ Note: The `[UUID]` in containerURL paths should be **identical** in both logs!
 This means App Groups work correctly! The issue is elsewhere:
 
 1. **Compare keys:**
-   - Extension writes to: `fitlinksShareKey`
-   - Host reads from: `fitlinksShareKey`
+   - Extension writes to: `cheflinksShareKey`
+   - Host reads from: `cheflinksShareKey`
    - Keys must match exactly
 
 2. **Check containerURL UUIDs:**

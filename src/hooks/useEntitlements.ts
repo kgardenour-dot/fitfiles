@@ -2,13 +2,15 @@ import { useMemo } from 'react';
 import { UserProfile } from '../types/database';
 import { PLAN_LIMITS } from '../constants/limits';
 import { BETA_DISABLE_PAYWALL } from '../config/flags';
-import { useRevenueCat } from './useRevenueCat';
+import { usePurchases } from '../contexts/PurchasesContext';
 
 export function useEntitlements(profile: UserProfile | null) {
-  const { hasProEntitlement } = useRevenueCat();
+  const { hasPro: revenueCatPro } = usePurchases();
   const tier = BETA_DISABLE_PAYWALL
     ? 'pro'
-    : (hasProEntitlement ? 'pro' : (profile?.plan_tier ?? 'free'));
+    : revenueCatPro
+      ? 'pro'
+      : (profile?.plan_tier ?? 'free');
   const limits = PLAN_LIMITS[tier];
 
   const isPro = tier === 'pro';

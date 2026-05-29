@@ -34,7 +34,7 @@
 │                 │  ┌────────┐ ┌─────────┐
 │ Fix:            │  │App     │ │Do you   │
 │ • Check crash   │  │Groups  │ │see      │
-│   logs          │  │NOT     │ │[FitLinks│
+│   logs          │  │NOT     │ │[ChefLinks│
 │ • Rebuild       │  │Config  │ │] React  │
 └─────────────────┘  │        │ │logs?    │
                      │Fix:    │ └──┬───┬──┘
@@ -98,8 +98,8 @@
 
 **Look for in Metro Console:**
 ```
-[FitLinks] CONSUME share
-[FitLinks] getSharedPayload result:
+[ChefLinks] CONSUME share
+[ChefLinks] getSharedPayload result:
 ```
 
 **If NO** → Go to [Scenario D: No React Logs](#scenario-d-no-react-logs)
@@ -111,7 +111,7 @@
 
 **Look for in Metro Console:**
 ```
-[FitLinks] getSharedPayload result: { type: 'weburl', value: 'https://...' }
+[ChefLinks] getSharedPayload result: { type: 'weburl', value: 'https://...' }
 ```
 
 **If NO** (shows null or undefined) → Go to [Scenario E: Empty Payload](#scenario-e-empty-payload)
@@ -150,7 +150,7 @@ Current url state: https://...
 **Problem:** Share extension not writing to UserDefaults
 
 **Diagnostic Steps:**
-1. Check if FitLinks appears in Share sheet
+1. Check if ChefLinks appears in Share sheet
 2. Check Xcode for extension crash logs
 3. Verify extension activation in Share sheet
 
@@ -178,28 +178,28 @@ npx expo run:ios --device
 
 **Diagnostic Steps:**
 1. Open Xcode: `./verify-app-groups.sh`
-2. Check FitLinks target → Signing & Capabilities
+2. Check ChefLinks target → Signing & Capabilities
 3. Check ShareExtension target → Signing & Capabilities
 
 **Solution:**
 1. In Xcode, select project (blue icon)
-2. Select **FitLinks** target
+2. Select **ChefLinks** target
 3. Go to **Signing & Capabilities** tab
 4. Verify **App Groups** capability exists
-5. Verify it includes: `group.com.banditinnovations.fitlinks`
+5. Verify it includes: `group.com.banditinnovations.cheflinks`
 6. Repeat for **ShareExtension** target
 7. Both MUST have the SAME group ID
 8. Clean and rebuild
 
 **Visual Check:**
 ```
-FitLinks Target:
+ChefLinks Target:
 ✅ App Groups
-  ✅ group.com.banditinnovations.fitlinks
+  ✅ group.com.banditinnovations.cheflinks
 
 ShareExtension Target:
 ✅ App Groups
-  ✅ group.com.banditinnovations.fitlinks
+  ✅ group.com.banditinnovations.cheflinks
 ```
 
 ---
@@ -216,8 +216,8 @@ ShareExtension Target:
 **Diagnostic Steps:**
 Check logs for exact values:
 ```
-Write: Suite: group.com.banditinnovations.fitlinks, Key: fitlinksShareKey
-Read:  Suite: group.com.banditinnovations.fitlinks, Key: fitlinksShareKey
+Write: Suite: group.com.banditinnovations.cheflinks, Key: cheflinksShareKey
+Read:  Suite: group.com.banditinnovations.cheflinks, Key: cheflinksShareKey
 ```
 
 **Solution:**
@@ -310,14 +310,14 @@ If stuck, provide these 5 items:
 
 2. **Metro Console Output**
    ```
-   [FitLinks] logs
+   [ChefLinks] logs
    ```
 
 3. **Import Debug Panel Screenshot**
    - Shows sharedKey, shareNonce, url state
 
 4. **Signing & Capabilities Screenshots**
-   - FitLinks target
+   - ChefLinks target
    - ShareExtension target
 
 5. **Build Environment**

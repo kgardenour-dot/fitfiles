@@ -1,13 +1,13 @@
 /**
- * Parse legacy FitLinks share deep link: fitlinks://dataUrl=<key>#<type>
+ * Parse legacy ChefLinks share deep link: cheflinks://dataUrl=<key>#<type>
  * Examples:
- *   fitlinks://dataUrl=fitlinksShareKey#weburl
- *   fitlinks://dataUrl=fitlinksShareKey#text
- *   fitlinks://dataUrl=fitlinksShareKey (no fragment)
+ *   cheflinks://dataUrl=cheflinksShareKey#weburl
+ *   cheflinks://dataUrl=cheflinksShareKey#text
+ *   cheflinks://dataUrl=cheflinksShareKey (no fragment)
  */
 export function normalizeShareUrl(rawUrl: string): { sharedKey: string; sharedType?: string } | null {
   if (!rawUrl || typeof rawUrl !== 'string') return null;
-  const prefix = 'fitlinks://dataUrl=';
+  const prefix = 'cheflinks://dataUrl=';
   if (!rawUrl.startsWith(prefix)) return null;
   const rest = rawUrl.slice(prefix.length);
   const hashIdx = rest.indexOf('#');

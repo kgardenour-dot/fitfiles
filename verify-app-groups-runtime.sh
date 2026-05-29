@@ -15,7 +15,7 @@
 set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
-APP_GROUP_ID="group.com.banditinnovations.fitlinks"
+APP_GROUP_ID="group.com.banditinnovations.cheflinks"
 
 echo "╔════════════════════════════════════════════════════════════════════╗"
 echo "║          App Groups Runtime Verification                          ║"

@@ -4,7 +4,7 @@ import { useShareIntentContext } from 'expo-share-intent';
 import { extractFirstUrl } from '../utils/url';
 
 /** The UserDefaults key used by the share extension to store shared data. */
-const SHARED_KEY = 'fitlinksShareKey';
+const SHARED_KEY = 'cheflinksShareKey';
 
 /**
  * Normalizes share intent payload into { url?, text?, title?, image? }.
@@ -49,7 +49,7 @@ export function useShareIntake(session: { user?: { id?: string } } | null) {
 
     const { url, text, title, image } = normalizePayload(shareIntent);
 
-    console.log('[FitLinks] useShareIntake:', {
+    console.log('[ChefLinks] useShareIntake:', {
       webUrl: shareIntent.webUrl,
       text: shareIntent.text?.substring(0, 80),
       metaKeys: shareIntent.meta ? Object.keys(shareIntent.meta) : null,

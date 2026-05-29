@@ -278,7 +278,7 @@ async function fetchYoutubeMetadata(url: string): Promise<UrlMetadata | null> {
 
     const res = await fetch(oembedUrl, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'FitLinks/1.0 (link preview)' },
+      headers: { 'User-Agent': 'ChefLinks/1.0 (link preview)' },
     });
     clearTimeout(timeout);
 
@@ -327,7 +327,7 @@ async function fetchTiktokMetadata(url: string): Promise<UrlMetadata | null> {
     const timeout = setTimeout(() => controller.abort(), 5000);
     const res = await fetch(oembedUrl, {
       signal: controller.signal,
-      headers: { 'User-Agent': 'FitLinks/1.0 (link preview)' },
+      headers: { 'User-Agent': 'ChefLinks/1.0 (link preview)' },
     });
     clearTimeout(timeout);
     if (!res.ok) return null;

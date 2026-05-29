@@ -25,4 +25,4 @@ class ShareExtensionPreprocessor {
     });
   }
 }
-var ExtensionPreprocessingJS = new ShareExtensionPreprocessor();
+globalThis.ExtensionPreprocessingJS = new ShareExtensionPreprocessor();

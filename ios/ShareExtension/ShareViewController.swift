@@ -10,9 +10,9 @@ import Social
 import UIKit
 
 class ShareViewController: UIViewController {
-  let hostAppGroupIdentifier = "group.com.banditinnovations.fitlinks"
-  let shareProtocol = "fitlinks"
-  let sharedKey = "fitlinksShareKey"
+  let hostAppGroupIdentifier = "group.com.banditinnovations.cheflinks"
+  let shareProtocol = "cheflinks"
+  let sharedKey = "cheflinksShareKey"
   var sharedMedia: [SharedMediaFile] = []
   var sharedWebUrl: [WebUrl] = []
   var sharedText: [String] = []
@@ -213,7 +213,7 @@ class ShareViewController: UIViewController {
           self.sharedWebUrl.append(WebUrl(url: urlString, meta: meta))
           // If this is the last item, save sharedText in userDefaults and redirect to host app
           if index == (content.attachments?.count)! - 1 {
-            let groupId = "group.com.banditinnovations.fitlinks"
+            let groupId = "group.com.banditinnovations.cheflinks"
             let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
             NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
 
@@ -348,7 +348,7 @@ class ShareViewController: UIViewController {
               WebUrl(url: baseURI, meta: meta))
             // If this is the last item, save sharedText in userDefaults and redirect to host app
             if index == (content.attachments?.count)! - 1 {
-              let groupId = "group.com.banditinnovations.fitlinks"
+              let groupId = "group.com.banditinnovations.cheflinks"
               let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
               NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
               
@@ -531,7 +531,7 @@ class ShareViewController: UIViewController {
 
           // If this is the last item, save imagesData in userDefaults and redirect to host app
           if index == (content.attachments?.count)! - 1 {
-            let groupId = "group.com.banditinnovations.fitlinks"
+            let groupId = "group.com.banditinnovations.cheflinks"
             let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
             NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
             
@@ -628,7 +628,7 @@ class ShareViewController: UIViewController {
 
           // If this is the last item, save imagesData in userDefaults and redirect to host app
           if index == (content.attachments?.count)! - 1 {
-            let groupId = "group.com.banditinnovations.fitlinks"
+            let groupId = "group.com.banditinnovations.cheflinks"
             let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
             NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
             
@@ -708,7 +708,7 @@ class ShareViewController: UIViewController {
     }
 
     if index == (content.attachments?.count)! - 1 {
-      let groupId = "group.com.banditinnovations.fitlinks"
+      let groupId = "group.com.banditinnovations.cheflinks"
       let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
       NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
       

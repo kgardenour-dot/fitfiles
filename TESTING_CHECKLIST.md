@@ -26,9 +26,9 @@ npx expo run:ios --device
 
 **Look for:**
 - ✅ Main App: `com.apple.security.application-groups` PRESENT
-- ✅ Main App: `group.com.banditinnovations.fitlinks` PRESENT
+- ✅ Main App: `group.com.banditinnovations.cheflinks` PRESENT
 - ✅ Share Extension: `com.apple.security.application-groups` PRESENT
-- ✅ Share Extension: `group.com.banditinnovations.fitlinks` PRESENT
+- ✅ Share Extension: `group.com.banditinnovations.cheflinks` PRESENT
 
 **If any ❌:**
 - Entitlements not signed into built artifacts
@@ -56,7 +56,7 @@ xcrun devicectl device observe logs
 1. **Open Safari or Chrome** on the iOS device
 2. **Navigate to any URL** (e.g., https://www.apple.com)
 3. **Tap Share button**
-4. **Select "FitLinks"** from share sheet
+4. **Select "ChefLinks"** from share sheet
 5. **Watch Terminal 2 for logs**
 
 ---
@@ -96,7 +96,7 @@ xcrun devicectl device observe logs
 OR
 
 ```
-[SharedItemsModule] ⚠️ No payload found for key: fitlinksShareKey
+[SharedItemsModule] ⚠️ No payload found for key: cheflinksShareKey
 ```
 
 ---
@@ -147,19 +147,19 @@ Copy these log sections from Terminal 2:
 
 ```
 # SHARE EXTENSION LOGS:
-[ShareViewController] 📦 AppGroup containerURL: file:///private/var/mobile/Containers/Shared/AppGroup/ABC123.../group.com.banditinnovations.fitlinks for group.com.banditinnovations.fitlinks
+[ShareViewController] 📦 AppGroup containerURL: file:///private/var/mobile/Containers/Shared/AppGroup/ABC123.../group.com.banditinnovations.cheflinks for group.com.banditinnovations.cheflinks
 [ShareViewController] ✅ Writing URL to UserDefaults
-[ShareViewController] Suite: group.com.banditinnovations.fitlinks
-[ShareViewController] Key: fitlinksShareKey
+[ShareViewController] Suite: group.com.banditinnovations.cheflinks
+[ShareViewController] Key: cheflinksShareKey
 [ShareViewController] URL: https://www.apple.com
 [ShareViewController] Payload length: 45 bytes
 [ShareViewController] Payload preview: [{"url":"https://www.apple.com","meta":""}]
 
 # HOST APP LOGS (after app opens):
-[SharedItemsModule] 📦 AppGroup containerURL: file:///private/var/mobile/Containers/Shared/AppGroup/ABC123.../group.com.banditinnovations.fitlinks for group.com.banditinnovations.fitlinks
+[SharedItemsModule] 📦 AppGroup containerURL: file:///private/var/mobile/Containers/Shared/AppGroup/ABC123.../group.com.banditinnovations.cheflinks for group.com.banditinnovations.cheflinks
 [SharedItemsModule] 📖 Reading from UserDefaults
-[SharedItemsModule] Suite: group.com.banditinnovations.fitlinks
-[SharedItemsModule] Key: fitlinksShareKey
+[SharedItemsModule] Suite: group.com.banditinnovations.cheflinks
+[SharedItemsModule] Key: cheflinksShareKey
 [SharedItemsModule] Type hint: nil
 [SharedItemsModule] ✅ Payload exists
 [SharedItemsModule] Payload type: Data, length: 45 bytes
@@ -198,14 +198,14 @@ The entitlements are not active at runtime. This means:
    - Not added to App ID
 
 **Fix Steps:**
-1. Open Xcode → FitLinks.xcodeproj
-2. Select **FitLinks** target → Signing & Capabilities
+1. Open Xcode → ChefLinks.xcodeproj
+2. Select **ChefLinks** target → Signing & Capabilities
 3. Note the Team ID
 4. Select **ShareExtension** target → Signing & Capabilities
 5. Verify **same Team ID**
 6. Check App Groups capability shows ✅ (not ⚠️)
 7. Go to developer.apple.com → Certificates, IDs & Profiles
-8. Verify App Group `group.com.banditinnovations.fitlinks` exists
+8. Verify App Group `group.com.banditinnovations.cheflinks` exists
 9. Verify App IDs include the App Group
 10. Regenerate provisioning profiles
 11. Clean build and test again

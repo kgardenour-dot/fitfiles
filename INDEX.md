@@ -64,7 +64,7 @@
 
 ### Code Files (Modified)
 - `ios/ShareExtension/ShareViewController.swift` - Added 6 containerURL logs
-- `ios/FitLinks/SharedItemsModule.swift` - Added 1 containerURL log
+- `ios/ChefLinks/SharedItemsModule.swift` - Added 1 containerURL log
 
 ### Scripts (New)
 - `verify-app-groups-runtime.sh` - Automated entitlement verification
@@ -133,7 +133,7 @@ No more mystery! 🎯
                    ▼
 ┌─────────────────────────────────────────────────────┐
 │  4. Test Share                                      │
-│     Safari → Share → FitLinks                       │
+│     Safari → Share → ChefLinks                       │
 └──────────────────┬──────────────────────────────────┘
                    │
                    ▼
@@ -172,9 +172,9 @@ With these 4 pieces of info, diagnosis is immediate and certain.
 ```
 # Verification script:
 ✅ Main App: com.apple.security.application-groups PRESENT
-✅ Main App: group.com.banditinnovations.fitlinks PRESENT
+✅ Main App: group.com.banditinnovations.cheflinks PRESENT
 ✅ Share Extension: com.apple.security.application-groups PRESENT
-✅ Share Extension: group.com.banditinnovations.fitlinks PRESENT
+✅ Share Extension: group.com.banditinnovations.cheflinks PRESENT
 
 # Device logs:
 [ShareViewController] 📦 AppGroup containerURL: file:///...

@@ -1,27 +1,34 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, Linking } from 'react-native';
+import { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  Image,
+  Platform,
+  ActivityIndicator,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Constants from 'expo-constants';
 import { useAuth } from '../../src/hooks/useAuth';
 import { useEntitlements } from '../../src/hooks/useEntitlements';
+import { usePurchases } from '../../src/contexts/PurchasesContext';
 import { Colors, Spacing, FontSize, BorderRadius } from '../../src/constants/theme';
 import { ConfettiDots } from '../../src/components/ConfettiDots';
+import { openManageSubscriptions } from '../../src/utils/subscriptions';
+import { hasProEntitlement } from '../../src/config/revenuecat';
+
+const isNativeMobile = Platform.OS === 'ios' || Platform.OS === 'android';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, deleteAccount } = useAuth();
   const { tier, isPro, limits } = useEntitlements(profile);
-  const appExtra = (Constants.expoConfig?.extra ?? {}) as {
-    testflightInviteUrl?: string;
-    supportEmail?: string;
-  };
-  const testflightInviteUrl = appExtra.testflightInviteUrl;
-  const configuredSupportEmail = appExtra.supportEmail?.trim();
-  const supportEmail =
-    configuredSupportEmail && !configuredSupportEmail.startsWith('REPLACE_WITH_')
-      ? configuredSupportEmail
-      : 'kristy@banditinnovations.com';
+  const { hasApiKey, restorePurchases } = usePurchases();
+  const [restoring, setRestoring] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const handleSignOut = () => {
     Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
@@ -30,17 +37,45 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const handleOpenInvite = async () => {
-    if (!testflightInviteUrl) return;
-    const canOpen = await Linking.canOpenURL(testflightInviteUrl);
-    if (canOpen) {
-      await Linking.openURL(testflightInviteUrl);
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete your account?',
+      'Your saved recipes, collections, and profile will be permanently deleted. This cannot be undone.\n\nSubscriptions billed through Apple or Google are managed in your store account—cancel there if you do not want to be charged again.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: () => void runDeleteAccount(),
+        },
+      ],
+    );
+  };
+
+  const runDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try {
+      const err = await deleteAccount();
+      if (err) {
+        Alert.alert('Could not delete account', err.message ?? 'Please try again in a moment.');
+      }
+    } finally {
+      setDeletingAccount(false);
     }
   };
 
-  const handleEmailFeedback = async () => {
-    if (!supportEmail) return;
-    await Linking.openURL(`mailto:${supportEmail}`);
+  const handleRestore = async () => {
+    setRestoring(true);
+    try {
+      const info = await restorePurchases();
+      if (info && hasProEntitlement(info)) {
+        Alert.alert('Restored', 'Your purchases were restored.');
+      } else {
+        Alert.alert('No purchases found', 'There is nothing to restore for this account.');
+      }
+    } finally {
+      setRestoring(false);
+    }
   };
 
   return (
@@ -69,7 +104,7 @@ export default function ProfileScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Plan Details</Text>
         <View style={styles.planRow}>
-          <Text style={styles.planLabel}>Max Workouts</Text>
+          <Text style={styles.planLabel}>Max Recipes</Text>
           <Text style={styles.planValue}>
             {limits.maxWorkouts === Infinity ? 'Unlimited' : limits.maxWorkouts}
           </Text>
@@ -82,31 +117,6 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* TestFlight details */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>TestFlight</Text>
-        <View style={styles.statusPill}>
-          <Ionicons name="rocket" size={14} color="#FFFFFF" />
-          <Text style={styles.statusPillText}>Live now</Text>
-        </View>
-        <Text style={styles.testflightBody}>
-          Thanks for testing FitLinks. Please focus feedback on share import reliability, save flow
-          speed, and collection organization.
-        </Text>
-        {testflightInviteUrl ? (
-          <TouchableOpacity onPress={handleOpenInvite} activeOpacity={0.75} style={styles.linkButton}>
-            <Ionicons name="open-outline" size={14} color={Colors.aquaMint} />
-            <Text style={styles.linkButtonText}>Join/Test in TestFlight</Text>
-          </TouchableOpacity>
-        ) : (
-          <Text style={styles.helperText}>Add `extra.testflightInviteUrl` in `app.json` to show invite link.</Text>
-        )}
-        <TouchableOpacity onPress={handleEmailFeedback} activeOpacity={0.75} style={styles.linkButton}>
-          <Ionicons name="mail-outline" size={14} color={Colors.aquaMint} />
-          <Text style={styles.linkButtonText}>Send feedback: {supportEmail}</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Upgrade button */}
       {!isPro && (
         <TouchableOpacity style={styles.upgradeBtn} onPress={() => router.push('/upgrade')} activeOpacity={0.8}>
@@ -114,6 +124,52 @@ export default function ProfileScreen() {
           <Text style={styles.upgradeBtnText}>Upgrade Plan</Text>
         </TouchableOpacity>
       )}
+
+      {isPro && hasApiKey && isNativeMobile ? (
+        <TouchableOpacity style={styles.secondaryBtn} onPress={openManageSubscriptions} activeOpacity={0.8}>
+          <Ionicons name="open-outline" size={20} color={Colors.aquaMint} />
+          <Text style={styles.secondaryBtnText}>Manage subscription</Text>
+        </TouchableOpacity>
+      ) : null}
+
+      {hasApiKey && isNativeMobile ? (
+        <TouchableOpacity
+          style={styles.secondaryBtn}
+          onPress={handleRestore}
+          disabled={restoring}
+          activeOpacity={0.8}
+        >
+          {restoring ? (
+            <ActivityIndicator color={Colors.aquaMint} />
+          ) : (
+            <>
+              <Ionicons name="refresh-outline" size={20} color={Colors.aquaMint} />
+              <Text style={styles.secondaryBtnText}>Restore purchases</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      ) : null}
+
+      <View style={styles.dangerSection}>
+        <Text style={styles.dangerTitle}>Account</Text>
+        <TouchableOpacity
+          style={[styles.deleteBtn, deletingAccount && styles.deleteBtnDisabled]}
+          onPress={handleDeleteAccount}
+          disabled={deletingAccount}
+          activeOpacity={0.85}
+          accessibilityRole="button"
+          accessibilityLabel="Delete account"
+        >
+          {deletingAccount ? (
+            <ActivityIndicator color={Colors.textMuted} />
+          ) : (
+            <>
+              <Ionicons name="trash-outline" size={20} color={Colors.sunsetOrange} />
+              <Text style={styles.deleteBtnText}>Delete account</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
 
       {/* Sign Out */}
       <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
@@ -124,7 +180,7 @@ export default function ProfileScreen() {
       {/* Logo at bottom */}
       <View style={styles.logoContainer}>
         <Image
-          source={require('../../assets/fitlinks_logo.png')}
+          source={require('../../assets/cheflinks_logo.png')}
           style={styles.bottomLogo}
           resizeMode="contain"
         />
@@ -217,46 +273,6 @@ const styles = StyleSheet.create({
     fontSize: FontSize.sm,
     fontWeight: '600',
   },
-  statusPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.aquaMint,
-    borderRadius: 999,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    gap: 6,
-    marginBottom: Spacing.sm,
-  },
-  statusPillText: {
-    color: '#FFFFFF',
-    fontSize: FontSize.xs,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  testflightBody: {
-    color: Colors.text,
-    fontSize: FontSize.sm,
-    lineHeight: 20,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    marginTop: Spacing.sm,
-    gap: 6,
-  },
-  linkButtonText: {
-    color: Colors.aquaMint,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
-  },
-  helperText: {
-    marginTop: Spacing.sm,
-    color: Colors.textSecondary,
-    fontSize: FontSize.xs,
-  },
   upgradeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -277,6 +293,61 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: FontSize.md,
     fontWeight: '700',
+  },
+  secondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.card,
+    borderRadius: BorderRadius.lg,
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.sm,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  secondaryBtnText: {
+    color: Colors.aquaMint,
+    fontSize: FontSize.md,
+    fontWeight: '600',
+  },
+  dangerSection: {
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  dangerTitle: {
+    color: Colors.textMuted,
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    marginBottom: Spacing.sm,
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    minHeight: 48,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.sunsetOrange + '55',
+    backgroundColor: Colors.sunsetOrange + '18',
+  },
+  deleteBtnDisabled: {
+    opacity: 0.6,
+  },
+  deleteBtnText: {
+    color: Colors.sunsetOrange,
+    fontSize: FontSize.md,
+    fontWeight: '600',
   },
   signOutBtn: {
     flexDirection: 'row',

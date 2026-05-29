@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Session, User } from '@supabase/supabase-js';
+import { Session, User, type PostgrestError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types/database';
 
@@ -9,28 +9,18 @@ export function useAuth() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    const { data } = await supabase
-      .from('user_profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-    setProfile(data as UserProfile | null);
-    setLoading(false);
-  }, []);
-
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
       setUser(s?.user ?? null);
-      if (s?.user) void fetchProfile(s.user.id);
+      if (s?.user) fetchProfile(s.user.id);
       else setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       setUser(s?.user ?? null);
-      if (s?.user) void fetchProfile(s.user.id);
+      if (s?.user) fetchProfile(s.user.id);
       else {
         setProfile(null);
         setLoading(false);
@@ -38,12 +28,17 @@ export function useAuth() {
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchProfile]);
+  }, []);
 
-  const refreshProfile = useCallback(async () => {
-    if (!user?.id) return;
-    await fetchProfile(user.id);
-  }, [user?.id, fetchProfile]);
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+    setProfile(data as UserProfile | null);
+    setLoading(false);
+  };
 
   const signUp = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({ email, password });
@@ -59,5 +54,13 @@ export function useAuth() {
     await supabase.auth.signOut();
   }, []);
 
-  return { session, user, profile, loading, signUp, signIn, signOut, refreshProfile };
+  /** Permanently deletes the account server-side (RPC), then signs out locally. */
+  const deleteAccount = useCallback(async (): Promise<PostgrestError | null> => {
+    const { error } = await supabase.rpc('delete_own_account');
+    if (error) return error;
+    await supabase.auth.signOut();
+    return null;
+  }, []);
+
+  return { session, user, profile, loading, signUp, signIn, signOut, deleteAccount };
 }

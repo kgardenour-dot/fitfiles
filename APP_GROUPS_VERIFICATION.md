@@ -10,15 +10,15 @@ Verify that App Groups work at runtime (not just in Xcode UI) and identify wheth
 ### Share Extension (`ios/ShareExtension/ShareViewController.swift`)
 Before every UserDefaults write, added:
 ```swift
-let groupId = "group.com.banditinnovations.fitlinks"
+let groupId = "group.com.banditinnovations.cheflinks"
 let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
 NSLog("[ShareViewController] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
 ```
 
-### Host App (`ios/FitLinks/SharedItemsModule.swift`)
+### Host App (`ios/ChefLinks/SharedItemsModule.swift`)
 At the start of `getSharedPayload`, added:
 ```swift
-let groupId = "group.com.banditinnovations.fitlinks"
+let groupId = "group.com.banditinnovations.cheflinks"
 let containerURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId)
 NSLog("[SharedItemsModule] 📦 AppGroup containerURL: \(containerURL?.absoluteString ?? "nil") for \(groupId)")
 ```
@@ -40,7 +40,7 @@ This script will:
 - Find your built `.app` and `.appex` in `ios/build/`
 - Extract and verify signed entitlements include:
   - `com.apple.security.application-groups`
-  - `group.com.banditinnovations.fitlinks`
+  - `group.com.banditinnovations.cheflinks`
 
 ### Step 3: Test Share on Device
 
@@ -110,7 +110,7 @@ find ios/build -maxdepth 6 -name "*.app" -path "*/Debug-iphoneos/*"
 find ios/build -maxdepth 8 -name "*.appex" -path "*/Debug-iphoneos/*"
 
 # Check entitlements (replace paths with your actual paths)
-codesign -d --entitlements :- "ios/build/.../FitLinks.app" | head -50
+codesign -d --entitlements :- "ios/build/.../ChefLinks.app" | head -50
 codesign -d --entitlements :- "ios/build/.../ShareExtension.appex" | head -50
 ```
 
@@ -118,7 +118,7 @@ Look for:
 ```xml
 <key>com.apple.security.application-groups</key>
 <array>
-    <string>group.com.banditinnovations.fitlinks</string>
+    <string>group.com.banditinnovations.cheflinks</string>
 </array>
 ```
 

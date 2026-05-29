@@ -1,35 +1,36 @@
 {
   "expo": {
-    "name": "FitLinks",
-    "slug": "fitlinks",
-    "version": "1.0.5",
+    "name": "ChefLinks",
+    "slug": "cheflinks",
+    "version": "1.0.10",
     "orientation": "portrait",
-    "icon": "./assets/fitlinks_logo_navy.png",
+    "icon": "./assets/cheflinks_app_logo.png",
     "userInterfaceStyle": "light",
-    "scheme": "fitlinks",
+    "scheme": "cheflinks",
     "splash": {
       "backgroundColor": "#0B1220"
     },
     "ios": {
-      "icon": "./assets/fitlinks_logo_navy.png",
+      "buildNumber": "19",
+      "icon": "./assets/cheflinks_app_logo.png",
       "supportsTablet": true,
-      "bundleIdentifier": "com.banditinnovations.fitlinks",
+      "bundleIdentifier": "com.banditinnovations.cheflinks",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
       "entitlements": {
         "com.apple.security.application-groups": [
-          "group.com.banditinnovations.fitlinks"
+          "group.com.banditinnovations.cheflinks"
         ]
       }
     },
     "android": {
+      "versionCode": 19,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/fitlinks_logo_navy.png",
+        "foregroundImage": "./assets/cheflinks_app_logo.png",
         "backgroundColor": "#0B1220"
       },
-      "versionCode": 5,
-      "package": "com.banditinnovations.fitlinks"
+      "package": "com.banditinnovations.cheflinks"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -41,16 +42,14 @@
       [
         "expo-share-intent",
         {
-          "iosAppGroupIdentifier": "group.com.banditinnovations.fitlinks"
+          "iosAppGroupIdentifier": "group.com.banditinnovations.cheflinks"
         }
       ]
     ],
     "extra": {
       "router": {},
-      "testflightInviteUrl": "https://testflight.apple.com/v1/invite/e5265f97379e4a9fb8c95efdd5b0ea0b42019900772e440183f6dc4e870b19fe192f11730?ct=Y9C555F9VT&advp=10000&platform=ios",
-      "supportEmail": "kristy@banditinnovations.com",
       "eas": {
-        "projectId": "bc276007-b5c7-41f6-81d9-2abc9a9e5427"
+        "projectId": "a8416a56-a039-4b02-bbdb-ad070e7869b6"
       }
     },
     "owner": "kgardenour-dot"

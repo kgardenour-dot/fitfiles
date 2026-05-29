@@ -298,10 +298,14 @@ export default function ImportScreen() {
   const [saveCompleted, setSaveCompleted] = useState(false);
   const [upgradeShown, setUpgradeShown] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
+  /** Bumped after App Group share payload is applied so URL/title TextInputs remount (fixes iOS controlled-input desync). */
+  const [shareFieldRemountKey, setShareFieldRemountKey] = useState(0);
   const consumedShareNonceRef = useRef<string | null>(null);
   const saveCompletedRef = useRef(false);
   const hasUserEditedTitleRef = useRef(false);
+  const hasUserEditedUrlRef = useRef(false);
   const hasPreprocessorTitleRef = useRef(false);
+  const lastPrefillSignatureRef = useRef<string | null>(null);
 
   const applySharedUrl = (incoming: string) => {
     const normalized = normalizeIncomingUrl(incoming);
@@ -310,7 +314,7 @@ export default function ImportScreen() {
     resolveSharedRedirectUrl(normalized).then((resolved) => {
       const normalizedResolved = normalizeIncomingUrl(resolved);
       if (normalizedResolved !== normalized) {
-        console.log('[FitLinks] Resolved shared redirect URL:', normalizedResolved);
+        console.log('[ChefLinks] Resolved shared redirect URL:', normalizedResolved);
         setUrl((prev) => (prev === normalized ? normalizedResolved : prev));
       }
     });
@@ -339,22 +343,45 @@ export default function ImportScreen() {
     const sourceUrl = pickParam(params.sourceUrl ?? params.url);
     const sourceText = pickParam(params.sourceText ?? params.text);
     const fileUrlParam = pickParam(params.fileUrl);
+    const titleVal = pickParam(params.title);
+    const imageVal = pickParam(params.image);
+    const shareNonce = pickParam(params.shareNonce);
+    const signature = JSON.stringify({
+      sourceUrl: sourceUrl ?? '',
+      sourceText: sourceText ?? '',
+      fileUrl: fileUrlParam ?? '',
+      title: titleVal ?? '',
+      image: imageVal ?? '',
+      shareNonce: shareNonce ?? '',
+    });
+    if (lastPrefillSignatureRef.current === signature) return;
+    lastPrefillSignatureRef.current = signature;
+
     let resolvedUrl = sourceUrl || '';
     if (!resolvedUrl && sourceText) {
       const extracted = extractFirstUrl(sourceText);
       if (extracted) resolvedUrl = extracted;
     }
-    if (resolvedUrl) applySharedUrl(resolvedUrl);
+    if (resolvedUrl && !hasUserEditedUrlRef.current) applySharedUrl(resolvedUrl);
     if (fileUrlParam) setFileUrl(fileUrlParam);
-    const titleVal = pickParam(params.title);
     if (titleVal && !isLowQualityTitle(titleVal)) {
       setTitle(titleVal);
       hasPreprocessorTitleRef.current = true;
     }
     // Image from warm-start expo-share-intent pathway
-    const imageVal = pickParam(params.image);
     if (imageVal) setThumbnailUrl(imageVal);
-  }, [saveCompleted, params.sourceUrl, params.url, params.sourceText, params.text, params.fileUrl, params.title, params.image]);
+  }, [
+    saveCompleted,
+    params.sourceUrl,
+    params.url,
+    params.sourceText,
+    params.text,
+    params.fileUrl,
+    params.title,
+    params.image,
+    params.shareNonce,
+    params.sharedKey,
+  ]);
 
   // Auto-fill title and thumbnail from URL metadata — only depends on url, runs after shared payload sets url.
   // Skipped when the preprocessor already provided good title + image (avoids redundant/wrong re-fetch).
@@ -405,57 +432,76 @@ export default function ImportScreen() {
     if (isSaving) return;
 
     consumedShareNonceRef.current = shareNonce;
-    console.log('[FitLinks] CONSUME share', { sharedKey, shareNonce });
+    console.log('[ChefLinks] CONSUME share', { sharedKey, shareNonce });
     const sharedType = pickParam(params.sharedType);
+
+    let cancelled = false;
 
     getSharedPayload(sharedKey, sharedType)
       .then((payload) => {
-        console.log('[FitLinks] getSharedPayload result:', payload);
+        if (cancelled) return;
+        console.log('[ChefLinks] getSharedPayload result:', payload);
         if (!payload?.value) {
-          console.log('[FitLinks] ⚠️ No payload value returned');
+          console.log('[ChefLinks] ⚠️ No payload value returned');
           return;
         }
         if (saveCompletedRef.current) return;
 
         const val = payload.value.trim();
-        console.log('[FitLinks] Payload value:', val.substring(0, 120));
+        console.log('[ChefLinks] Payload value:', val.substring(0, 120));
+
+        // Shared payload wins over any spurious TextInput edits during open (e.g. iOS focus glitches).
+        hasUserEditedUrlRef.current = false;
+        hasUserEditedTitleRef.current = false;
 
         // Extract preprocessor meta (title, og:image) from the share extension
         const preprocessor = parsePreprocessorMeta(payload.meta);
         if (preprocessor.title) {
-          console.log('[FitLinks] Setting title from preprocessor:', preprocessor.title);
+          console.log('[ChefLinks] Setting title from preprocessor:', preprocessor.title);
           setTitle(preprocessor.title);
           hasPreprocessorTitleRef.current = true;
         }
         if (preprocessor.image) {
-          console.log('[FitLinks] Setting thumbnail from preprocessor:', preprocessor.image);
+          console.log('[ChefLinks] Setting thumbnail from preprocessor:', preprocessor.image);
           setThumbnailUrl(preprocessor.image);
         }
 
         if (val.startsWith('http://') || val.startsWith('https://')) {
-          console.log('[FitLinks] Setting URL from payload');
+          console.log('[ChefLinks] Setting URL from payload');
           applySharedUrl(val);
         } else if (val.startsWith('file://')) {
-          console.log('[FitLinks] Setting file URL from payload');
+          console.log('[ChefLinks] Setting file URL from payload');
           setFileUrl(val);
           setUrl(val);
         } else {
           const extracted = extractFirstUrl(val);
           if (extracted) {
-            console.log('[FitLinks] Extracted URL from text:', extracted);
+            console.log('[ChefLinks] Extracted URL from text:', extracted);
             applySharedUrl(extracted);
           } else {
-            console.log('[FitLinks] No URL found, adding to notes');
+            console.log('[ChefLinks] No URL found, adding to notes');
             setNotes((prev) => (prev ? `${prev}\n\n${val}` : val));
           }
         }
 
-        clearSharedPayload(sharedKey).catch(() => {});
+        setShareFieldRemountKey((k) => k + 1);
+
+        if (!cancelled) {
+          clearSharedPayload(sharedKey).catch(() => {});
+        }
       })
       .catch((err) => {
         // Some share-extension payloads include malformed meta; treat as non-fatal.
-        if (__DEV__) console.log('[FitLinks] getSharedPayload failed:', err);
+        if (__DEV__) console.log('[ChefLinks] getSharedPayload failed:', err);
       });
+
+    return () => {
+      cancelled = true;
+      // Remount (Strict Mode) or blur before getSharedPayload resolves — allow the next mount to read the same nonce.
+      if (consumedShareNonceRef.current === shareNonce) {
+        consumedShareNonceRef.current = null;
+      }
+    };
   }, [params.sharedKey, params.sharedType, params.shareNonce, saveCompleted, isSaving]);
 
   const handlePasteSample = async () => {
@@ -491,7 +537,7 @@ export default function ImportScreen() {
     }
 
     setIsSaving(true);
-    setSaveStatus('Saving workout_link...');
+      setSaveStatus('Saving recipe link...');
     let saveSucceeded = false;
     try {
       let normalizedUrl = trimmedUrl;
@@ -530,7 +576,7 @@ export default function ImportScreen() {
         [],
       );
 
-      setSaveStatus('Workout saved. Assigning collections...');
+      setSaveStatus('Recipe saved. Assigning collections...');
 
       // Add to selected collections (non-blocking; don't fail import)
       const ids = Array.from(selectedCollectionIds);
@@ -545,11 +591,12 @@ export default function ImportScreen() {
             .from('collection_items')
             .upsert(rows, { onConflict: 'collection_id,workout_link_id', ignoreDuplicates: true });
           if (error) throw error;
+          await fetchCollections();
         } catch (collErr: unknown) {
           const isSupabase = collErr && typeof collErr === 'object' && 'code' in collErr;
           const errMsg = isSupabase
             ? `${(collErr as { code?: string; message?: string }).code ?? 'unknown'}: ${(collErr as { message?: string }).message ?? 'Unknown'}`
-            : "Your workout was saved, but we couldn't add it to the selected collections.";
+            : "Your recipe was saved, but we couldn't add it to the selected collections.";
           if (__DEV__) console.warn('[Import] Collection add failed:', errMsg);
           saveSucceeded = true;
           setSaveCompleted(true);
@@ -574,7 +621,7 @@ export default function ImportScreen() {
         Alert.alert('Supabase Error', `${e.code ?? 'unknown'}: ${e.message ?? 'Unknown error'}${details}`);
         return;
       }
-      const message = err instanceof Error ? err.message : 'Failed to save workout link.';
+      const message = err instanceof Error ? err.message : 'Failed to save recipe link.';
       const isQuotaOrTier = /quota|limit|tier|upgrade/i.test(message);
       if (isQuotaOrTier && !upgradeShown) {
         setUpgradeShown(true);
@@ -607,9 +654,13 @@ export default function ImportScreen() {
         <ScrollView style={styles.form} keyboardShouldPersistTaps="handled">
           <Text style={styles.label}>URL (required)</Text>
           <TextInput
+            key={`import-url-${shareFieldRemountKey}`}
             style={styles.input}
             value={url}
-            onChangeText={setUrl}
+            onChangeText={(text) => {
+              hasUserEditedUrlRef.current = true;
+              setUrl(text);
+            }}
             placeholder="https://..."
             placeholderTextColor={Colors.textMuted}
             autoCapitalize="none"
@@ -624,13 +675,14 @@ export default function ImportScreen() {
 
           <Text style={styles.label}>Title (optional)</Text>
           <TextInput
+            key={`import-title-${shareFieldRemountKey}`}
             style={styles.input}
             value={title}
             onChangeText={(text) => {
               hasUserEditedTitleRef.current = true;
               setTitle(text);
             }}
-            placeholder="Workout title"
+            placeholder="Recipe title"
             placeholderTextColor={Colors.textMuted}
           />
 
@@ -664,7 +716,7 @@ export default function ImportScreen() {
                   </View>
                   <Text style={styles.collectionName}>{c.name}</Text>
                   {typeof c.workout_count === 'number' && (
-                    <Text style={styles.collectionCount}>{c.workout_count} workouts</Text>
+                    <Text style={styles.collectionCount}>{c.workout_count} recipes</Text>
                   )}
                 </TouchableOpacity>
               ))}
