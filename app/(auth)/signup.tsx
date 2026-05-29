@@ -34,7 +34,7 @@ export default function SignUpScreen() {
     if (!isSupabaseConfigured) {
       Alert.alert(
         'Sign up unavailable',
-        'This install was built without Supabase settings. In Expo, add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY for the production environment, then run a new EAS iOS build and submit to TestFlight.',
+        'Account creation is temporarily unavailable. Please update to the latest version of FitLinks or contact support.',
       );
       return;
     }

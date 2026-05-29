@@ -5,7 +5,7 @@ function readBooleanEnv(value: string | undefined, defaultValue = false): boolea
   return TRUE_VALUES.has(value.trim().toLowerCase());
 }
 
-export const BETA_DISABLE_PAYWALL = readBooleanEnv(
-  process.env.EXPO_PUBLIC_BETA_DISABLE_PAYWALL,
+export const DISABLE_PAYWALL = readBooleanEnv(
+  process.env.EXPO_PUBLIC_DISABLE_PAYWALL,
   false,
 );

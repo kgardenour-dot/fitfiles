@@ -8,7 +8,7 @@
       "distribution": "internal",
       "environment": "development",
       "env": {
-        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "true"
+        "EXPO_PUBLIC_DISABLE_PAYWALL": "true"
       }
     },
     "preview": {
@@ -18,27 +18,28 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "false"
+        "EXPO_PUBLIC_DISABLE_PAYWALL": "false"
       }
     },
-    "beta": {
+    "staging": {
       "distribution": "store",
       "environment": "production",
       "android": {
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "false"
+        "EXPO_PUBLIC_DISABLE_PAYWALL": "false"
       }
     },
     "production": {
       "distribution": "store",
       "environment": "production",
+      "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_BETA_DISABLE_PAYWALL": "false"
+        "EXPO_PUBLIC_DISABLE_PAYWALL": "false"
       }
     }
   },

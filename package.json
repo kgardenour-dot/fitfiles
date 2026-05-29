@@ -1,6 +1,6 @@
 {
   "name": "fitlinks",
-  "version": "1.0.11",
+  "version": "1.0.20",
   "main": "expo-router/entry",
   "scripts": {
     "postinstall": "patch-package",

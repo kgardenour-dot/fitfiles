@@ -36,7 +36,7 @@ const PRO_FEATURES = [
   'Unlimited saved workouts',
   'Unlimited collections',
   'Priority support',
-  'Early access to new features',
+  'First to get new features',
 ] as const;
 
 export default function UpgradeScreen() {
@@ -103,8 +103,7 @@ export default function UpgradeScreen() {
     }
   };
 
-  const showDevConfigHint = !hasApiKey && __DEV__;
-  const showUserFacingConfigIssue = !hasApiKey && !__DEV__;
+  const showSubscriptionUnavailable = !hasApiKey;
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -193,14 +192,10 @@ export default function UpgradeScreen() {
 
             <Text style={styles.pickPlanTitle}>Choose your plan</Text>
 
-            {showDevConfigHint ? (
+            {showSubscriptionUnavailable ? (
               <Text style={styles.configHint}>
-                Development: set EXPO_PUBLIC_REVENUECAT_IOS_API_KEY and EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY, then
-                rebuild the native app.
+                Subscriptions are not available right now. Please check back soon or contact support.
               </Text>
-            ) : null}
-            {showUserFacingConfigIssue ? (
-              <Text style={styles.configHint}>Subscriptions are temporarily unavailable. Please try again later.</Text>
             ) : null}
 
             {hasApiKey && loadingOfferings ? (
@@ -212,7 +207,7 @@ export default function UpgradeScreen() {
 
             {hasApiKey && !loadingOfferings && sortedPackages.length === 0 ? (
               <Text style={styles.configHint}>
-                No plans to show yet. Ask the team to attach subscription products to the current offering in RevenueCat.
+                No subscription plans are available at the moment. Please check back later.
               </Text>
             ) : null}
 

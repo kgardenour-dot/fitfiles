@@ -22,13 +22,11 @@ import { extractDomain, fetchUrlMetadata } from '../src/lib/og-scraper';
 import { extractFirstUrl } from '../src/utils/url';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/constants/theme';
 import { PLAN_LIMITS } from '../src/constants/limits';
-import { BETA_DISABLE_PAYWALL } from '../src/config/flags';
+import { DISABLE_PAYWALL } from '../src/config/flags';
 import { hasProEntitlement } from '../src/config/revenuecat';
 import { usePurchases } from '../src/contexts/PurchasesContext';
 import { getSharedPayload, clearSharedPayload } from '../src/native/sharedItems';
 import Purchases from 'react-native-purchases';
-
-const SAMPLE_LINK = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
 
 /** Titles that are generic/useless — treat as empty so we try harder. */
 const BAD_TITLE_PATTERNS = [
@@ -513,10 +511,6 @@ export default function ImportScreen() {
       });
   }, [params.sharedKey, params.sharedType, params.shareNonce, saveCompleted, isSaving]);
 
-  const handlePasteSample = async () => {
-    setUrl(SAMPLE_LINK);
-  };
-
   const goToLibraryNow = () => {
     setSaveStatus('Navigating now...');
     requestAnimationFrame(() => {
@@ -563,7 +557,7 @@ export default function ImportScreen() {
 
     // Mirror useEntitlements — async + resilient when RevenueCat throws before SDK is ready (iOS configure delay).
     let tier: 'free' | 'pro' = 'free';
-    if (BETA_DISABLE_PAYWALL) {
+    if (DISABLE_PAYWALL) {
       tier = 'pro';
     } else if (Platform.OS !== 'ios' && Platform.OS !== 'android') {
       tier = hasProEntitlement(purchasesCustomerInfo)
@@ -691,9 +685,7 @@ export default function ImportScreen() {
     } catch (err: unknown) {
       const isSupabase = err && typeof err === 'object' && 'code' in err;
       if (isSupabase) {
-        const e = err as { code?: string; message?: string; details?: unknown };
-        const details = e.details != null ? `\n\nDetails: ${JSON.stringify(e.details)}` : '';
-        Alert.alert('Supabase Error', `${e.code ?? 'unknown'}: ${e.message ?? 'Unknown error'}${details}`);
+        Alert.alert('Could not save workout', 'Something went wrong. Please try again.');
         return;
       }
       const message = err instanceof Error ? err.message : 'Failed to save workout link.';
@@ -762,11 +754,6 @@ export default function ImportScreen() {
             keyboardType="url"
             autoCorrect={false}
           />
-
-          <TouchableOpacity style={styles.secondaryBtn} onPress={handlePasteSample}>
-            <Ionicons name="link-outline" size={18} color={Colors.aquaMint} />
-            <Text style={styles.secondaryBtnText}>Paste sample link</Text>
-          </TouchableOpacity>
 
           <Text style={styles.label}>Title (optional)</Text>
           <TextInput
@@ -905,17 +892,6 @@ const styles = StyleSheet.create({
     height: 90,
     paddingTop: Spacing.sm,
     textAlignVertical: 'top',
-  },
-  secondaryBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    marginTop: Spacing.sm,
-  },
-  secondaryBtnText: {
-    color: Colors.aquaMint,
-    fontSize: FontSize.sm,
-    fontWeight: '600',
   },
   emptyCollectionsText: {
     color: Colors.textMuted,

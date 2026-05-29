@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { Platform } from 'react-native';
 import { UserProfile } from '../types/database';
 import { PLAN_LIMITS } from '../constants/limits';
-import { BETA_DISABLE_PAYWALL } from '../config/flags';
+import { DISABLE_PAYWALL } from '../config/flags';
 import { usePurchases } from '../contexts/PurchasesContext';
 
 const isNativeMobile = Platform.OS === 'ios' || Platform.OS === 'android';
@@ -15,7 +15,7 @@ const isNativeMobile = Platform.OS === 'ios' || Platform.OS === 'android';
  */
 export function useEntitlements(profile: UserProfile | null) {
   const { hasPro: revenueCatPro, hasApiKey } = usePurchases();
-  const tier = BETA_DISABLE_PAYWALL
+  const tier = DISABLE_PAYWALL
     ? 'pro'
     : !isNativeMobile
       ? revenueCatPro
