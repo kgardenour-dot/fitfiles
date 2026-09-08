@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +32,7 @@ import {
   sortPaywallPackages,
   isAnnualPackage,
 } from '../src/utils/revenuecat-ui';
+import { APPLE_STANDARD_EULA_URL } from '../src/constants/legal';
 
 const PRO_FEATURES = [
   'Unlimited saved workouts',
@@ -262,6 +264,37 @@ export default function UpgradeScreen() {
             renews automatically until you cancel. Cancel at least 24 hours before renewal to avoid being charged again.
             Manage or cancel in your account settings.
           </Text>
+          <View style={styles.legalLinks}>
+            <TouchableOpacity
+              onPress={() => router.push('/legal/privacy')}
+              accessibilityRole="link"
+              accessibilityLabel="Privacy Policy"
+            >
+              <Text style={styles.legalLink}>Privacy Policy</Text>
+            </TouchableOpacity>
+            <Text style={styles.legalLinkDot}>·</Text>
+            <TouchableOpacity
+              onPress={() => router.push('/legal/terms')}
+              accessibilityRole="link"
+              accessibilityLabel="Terms of Use"
+            >
+              <Text style={styles.legalLink}>Terms of Use</Text>
+            </TouchableOpacity>
+            {Platform.OS === 'ios' ? (
+              <>
+                <Text style={styles.legalLinkDot}>·</Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    void Linking.openURL(APPLE_STANDARD_EULA_URL);
+                  }}
+                  accessibilityRole="link"
+                  accessibilityLabel="Apple Standard EULA"
+                >
+                  <Text style={styles.legalLink}>Apple EULA</Text>
+                </TouchableOpacity>
+              </>
+            ) : null}
+          </View>
         </View>
 
         {hasApiKey && Platform.OS !== 'web' && !isPro ? (
@@ -531,6 +564,22 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontSize: FontSize.xs,
     lineHeight: 18,
+  },
+  legalLinks: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginTop: Spacing.md,
+    gap: 6,
+  },
+  legalLink: {
+    color: Colors.aquaMint,
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+  },
+  legalLinkDot: {
+    color: Colors.textMuted,
+    fontSize: FontSize.sm,
   },
   restoreFooter: {
     alignItems: 'center',

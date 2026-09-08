@@ -22,6 +22,7 @@ import { extractDomain, fetchUrlMetadata } from '../src/lib/og-scraper';
 import { extractFirstUrl } from '../src/utils/url';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/constants/theme';
 import { PLAN_LIMITS } from '../src/constants/limits';
+import { countOwnedWorkoutLinks } from '../src/lib/counts';
 import { DISABLE_PAYWALL } from '../src/config/flags';
 import { hasProEntitlement } from '../src/config/revenuecat';
 import { usePurchases } from '../src/contexts/PurchasesContext';
@@ -546,14 +547,13 @@ export default function ImportScreen() {
       return;
     }
 
-    // Fresh server count + RevenueCat (hook state can lag right after app launch / share cold-open).
-    const { count: workoutCountHead, error: countErr } = await supabase
-      .from('workout_links')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId);
-    if (countErr) console.warn('[FitLinks] workout count query', countErr.message);
-    const savedCount =
-      typeof workoutCountHead === 'number' ? workoutCountHead : workouts.length;
+    let savedCount = workouts.length;
+    try {
+      savedCount = await countOwnedWorkoutLinks(userId);
+    } catch (countErr: unknown) {
+      const message = countErr instanceof Error ? countErr.message : String(countErr);
+      console.warn('[FitLinks] workout count query', message);
+    }
 
     // Mirror useEntitlements — async + resilient when RevenueCat throws before SDK is ready (iOS configure delay).
     let tier: 'free' | 'pro' = 'free';

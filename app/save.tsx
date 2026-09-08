@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -24,6 +24,8 @@ import { useEntitlements } from '../src/hooks/useEntitlements';
 import { TagSelector } from '../src/components/TagSelector';
 import { fetchOGMetadata, extractDomain } from '../src/lib/og-scraper';
 import { thumbnailImageSource } from '../src/lib/thumbnail-image';
+import { countOwnedWorkoutLinks } from '../src/lib/counts';
+import { supabase } from '../src/lib/supabase';
 import { Colors, Spacing, FontSize, BorderRadius } from '../src/constants/theme';
 import { TagType } from '../src/types/database';
 import { DEFAULT_TAGS } from '../src/constants/tags';
@@ -31,8 +33,8 @@ import { ConfettiDots } from '../src/components/ConfettiDots';
 
 export default function SaveScreen() {
   const router = useRouter();
-  const { createWorkout, workouts, fetchWorkouts } = useWorkouts();
-  const { tags, fetchTags, createTag } = useTags();
+  const { createWorkout } = useWorkouts();
+  const { tags, hasFetched, fetchTags, createTag } = useTags();
   const { profile } = useAuth();
   const { canSaveWorkout } = useEntitlements(profile);
 
@@ -48,27 +50,27 @@ export default function SaveScreen() {
 
   const helpScrollMaxHeight = Dimensions.get('window').height * 0.72;
 
+  const seededTagsRef = useRef(false);
+
   useEffect(() => {
     fetchTags();
-    fetchWorkouts(); // To count workouts for gating
-  }, [fetchTags, fetchWorkouts]);
+  }, [fetchTags]);
 
-  // Seed default tags if none exist
   useEffect(() => {
-    if (tags.length === 0) {
-      const seed = async () => {
-        for (const t of DEFAULT_TAGS) {
-          try {
-            await createTag(t.name, t.tag_type);
-          } catch {
-            // ignore duplicates
-          }
+    if (!hasFetched || tags.length > 0 || seededTagsRef.current) return;
+    seededTagsRef.current = true;
+    const seed = async () => {
+      for (const t of DEFAULT_TAGS) {
+        try {
+          await createTag(t.name, t.tag_type);
+        } catch {
+          // ignore duplicates
         }
-        fetchTags();
-      };
-      seed();
-    }
-  }, [tags.length, createTag, fetchTags]);
+      }
+      fetchTags();
+    };
+    void seed();
+  }, [hasFetched, tags.length, createTag, fetchTags]);
 
   const handlePreview = async () => {
     if (!url.trim()) {
@@ -92,12 +94,21 @@ export default function SaveScreen() {
       Alert.alert('Error', 'Please enter a URL.');
       return;
     }
-    if (!canSaveWorkout(workouts.length)) {
-      router.push('/upgrade');
-      return;
-    }
     setSaving(true);
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) {
+        Alert.alert('Error', 'You must be signed in to save a workout.');
+        return;
+      }
+      const savedCount = await countOwnedWorkoutLinks(userId);
+      if (!canSaveWorkout(savedCount)) {
+        router.push('/upgrade');
+        return;
+      }
       let normalizedUrl = url.trim();
       if (!/^https?:\/\//i.test(normalizedUrl)) {
         normalizedUrl = 'https://' + normalizedUrl;

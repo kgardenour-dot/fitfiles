@@ -1,11 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import * as SecureStore from 'expo-secure-store';
-
-const ExpoSecureStoreAdapter = {
-  getItem: (key: string) => SecureStore.getItemAsync(key),
-  setItem: (key: string, value: string) => SecureStore.setItemAsync(key, value),
-  removeItem: (key: string) => SecureStore.deleteItemAsync(key),
-};
+import { chunkedSecureStoreAdapter } from './secure-store-adapter';
 
 // Inlined at bundle time. Local: .env. TestFlight/App Store: set on EAS (Project → Environment variables
 // or eas env:create) for the production environment — a gitignored .env is not used on EAS Build.
@@ -22,7 +16,7 @@ export { SUPABASE_URL };
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
-    storage: ExpoSecureStoreAdapter,
+    storage: chunkedSecureStoreAdapter,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

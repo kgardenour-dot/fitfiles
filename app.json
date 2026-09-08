@@ -42,7 +42,8 @@
       [
         "expo-share-intent",
         {
-          "iosAppGroupIdentifier": "group.com.banditinnovations.fitlinks"
+          "iosAppGroupIdentifier": "group.com.banditinnovations.fitlinks",
+          "androidIntentFilters": ["text/*", "image/*"]
         }
       ]
     ],

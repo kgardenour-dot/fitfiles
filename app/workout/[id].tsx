@@ -125,8 +125,12 @@ export default function WorkoutDetailScreen() {
   };
 
   const handleDone = async () => {
-    await markDone(workout.id);
-    Alert.alert('Done!', 'Marked as completed.');
+    try {
+      await markDone(workout.id);
+      Alert.alert('Done!', 'Marked as completed.');
+    } catch (err: unknown) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Could not mark workout as done.');
+    }
   };
 
   const handleDelete = () => {

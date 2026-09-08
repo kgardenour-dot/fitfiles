@@ -1,11 +1,16 @@
 import { useMemo } from 'react';
 import { Platform } from 'react-native';
-import { UserProfile } from '../types/database';
+import { PlanTier, UserProfile } from '../types/database';
 import { PLAN_LIMITS } from '../constants/limits';
 import { DISABLE_PAYWALL } from '../config/flags';
 import { usePurchases } from '../contexts/PurchasesContext';
 
 const isNativeMobile = Platform.OS === 'ios' || Platform.OS === 'android';
+
+/** DB still allows a legacy `plus` value; treat it as Pro. Anything else is Free. */
+function normalizePlanTier(value: string | null | undefined): PlanTier {
+  return value === 'pro' || value === 'plus' ? 'pro' : 'free';
+}
 
 /**
  * On iOS/Android, Pro must come from StoreKit via RevenueCat when the SDK is configured (`hasApiKey`).
@@ -20,13 +25,13 @@ export function useEntitlements(profile: UserProfile | null) {
     : !isNativeMobile
       ? revenueCatPro
         ? 'pro'
-        : (profile?.plan_tier ?? 'free')
+        : normalizePlanTier(profile?.plan_tier)
       : !hasApiKey
         ? 'free'
         : revenueCatPro
           ? 'pro'
           : 'free';
-  const limits = PLAN_LIMITS[tier];
+  const limits = PLAN_LIMITS[tier] ?? PLAN_LIMITS.free;
 
   const isPro = tier === 'pro';
 
