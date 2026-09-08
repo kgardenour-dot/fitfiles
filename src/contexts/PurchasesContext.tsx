@@ -31,6 +31,9 @@ const canIdentifyRevenueCat = isNative && (revenueCatMode === 'login' || revenue
 const canUseRevenueCat = isNative && revenueCatMode === 'full';
 const CONFIGURE_DELAY_MS = Platform.OS === 'ios' ? 2000 : 0;
 
+/** Process-wide: Purchases.configure must run once, and must survive React remounts. */
+let revenueCatDidConfigure = false;
+
 function getApiKey(): string | undefined {
   const ios = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY?.trim();
   const android = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY?.trim();
@@ -71,12 +74,11 @@ export function PurchasesProvider({
   const [customerInfo, setCustomerInfo] = useState<CustomerInfo | null>(null);
   const [isConfigured, setIsConfigured] = useState(!canConfigureRevenueCat);
   const [hasApiKey, setHasApiKey] = useState(false);
-  const configureStarted = useRef(false);
   const lastLoggedInUserId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!canConfigureRevenueCat || configureStarted.current) return;
-    configureStarted.current = true;
+    if (!canConfigureRevenueCat) return;
+
     const apiKey = getApiKey();
     if (!apiKey) {
       console.warn(
@@ -87,20 +89,32 @@ export function PurchasesProvider({
       return;
     }
 
+    if (revenueCatDidConfigure) {
+      setHasApiKey(canObserveRevenueCat);
+      setIsConfigured(true);
+      return;
+    }
+
+    let cancelled = false;
     const timer = setTimeout(() => {
+      if (cancelled) return;
       try {
         Purchases.setLogLevel(__DEV__ ? LOG_LEVEL.DEBUG : LOG_LEVEL.WARN);
         Purchases.configure({ apiKey });
+        revenueCatDidConfigure = true;
         setHasApiKey(canObserveRevenueCat);
       } catch (e) {
         console.warn('[RevenueCat] configure failed', e);
         setHasApiKey(false);
       } finally {
-        setIsConfigured(true);
+        if (!cancelled) setIsConfigured(true);
       }
     }, CONFIGURE_DELAY_MS);
 
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, []);
 
   useEffect(() => {

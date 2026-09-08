@@ -5,6 +5,7 @@ import { Tag, TagType } from '../types/database';
 export function useTags() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
 
   const fetchTags = useCallback(async () => {
     setLoading(true);
@@ -17,6 +18,7 @@ export function useTags() {
       if (error) throw error;
       setTags(data as Tag[]);
     } finally {
+      setHasFetched(true);
       setLoading(false);
     }
   }, []);
@@ -47,5 +49,5 @@ export function useTags() {
     [tags],
   );
 
-  return { tags, loading, fetchTags, createTag, deleteTag, getTagsByType };
+  return { tags, loading, hasFetched, fetchTags, createTag, deleteTag, getTagsByType };
 }

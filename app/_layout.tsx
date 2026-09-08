@@ -3,6 +3,7 @@ import { Stack, useRouter, useSegments, useGlobalSearchParams } from 'expo-route
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import * as Linking from 'expo-linking';
+import { ShareIntentProvider } from 'expo-share-intent';
 import { supabase } from '../src/lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import { Colors } from '../src/constants/theme';
@@ -19,6 +20,7 @@ import {
   parseAuthCallbackUrl,
   setPasswordRecoveryActive,
 } from '../src/utils/passwordRecovery';
+import { useShareIntake } from '../src/hooks/useShareIntake';
 
 function pickParam(value: unknown): string | undefined {
   if (value == null) return undefined;
@@ -27,6 +29,16 @@ function pickParam(value: unknown): string | undefined {
 }
 
 export default function RootLayout() {
+  return (
+    <ErrorBoundary>
+      <ShareIntentProvider options={{ debug: __DEV__ }}>
+        <RootLayoutInner />
+      </ShareIntentProvider>
+    </ErrorBoundary>
+  );
+}
+
+function RootLayoutInner() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -43,6 +55,8 @@ export default function RootLayout() {
     shareNonce?: string;
   }>();
   const hasStoredRedirectRef = useRef(false);
+
+  useShareIntake(session, !loading);
 
   useEffect(() => {
     let cancelled = false;
@@ -195,24 +209,20 @@ export default function RootLayout() {
 
   if (loading) {
     return (
-      <ErrorBoundary>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
-          <ActivityIndicator size="large" color={Colors.coralPulse} />
-        </View>
-      </ErrorBoundary>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
+        <ActivityIndicator size="large" color={Colors.coralPulse} />
+      </View>
     );
   }
 
   return (
-    <ErrorBoundary>
-      <PurchasesProvider userId={session?.user?.id ?? null}>
-        <WorkoutsProvider>
-          <CollectionsProvider>
-            <RootStack />
-          </CollectionsProvider>
-        </WorkoutsProvider>
-      </PurchasesProvider>
-    </ErrorBoundary>
+    <PurchasesProvider userId={session?.user?.id ?? null}>
+      <WorkoutsProvider>
+        <CollectionsProvider>
+          <RootStack />
+        </CollectionsProvider>
+      </WorkoutsProvider>
+    </PurchasesProvider>
   );
 }
 

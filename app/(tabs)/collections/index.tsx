@@ -17,6 +17,8 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as SecureStore from 'expo-secure-store';
+import { countOwnedCollections } from '../../../src/lib/counts';
+import { supabase } from '../../../src/lib/supabase';
 import { useCollections } from '../../../src/hooks/useCollections';
 import { useAuth } from '../../../src/hooks/useAuth';
 import { useEntitlements } from '../../../src/hooks/useEntitlements';
@@ -93,12 +95,21 @@ export default function CollectionsScreen() {
   const handleCreate = async () => {
     const name = newName.trim();
     if (!name) return;
-    if (!canCreateCollection(collections.length)) {
-      router.push('/upgrade');
-      return;
-    }
     setCreating(true);
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
+      if (!userId) {
+        Alert.alert('Error', 'You must be signed in to create a collection.');
+        return;
+      }
+      const currentCount = await countOwnedCollections(userId);
+      if (!canCreateCollection(currentCount)) {
+        router.push('/upgrade');
+        return;
+      }
       await createCollection(name);
       setNewName('');
       setShowCreate(false);

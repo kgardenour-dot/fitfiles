@@ -328,19 +328,37 @@ export function WorkoutsProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const markOpened = useCallback(async (id: string) => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) throw new Error('You must be signed in to open a workout.');
+
     await supabase
       .from('workout_links')
       .update({ last_opened_at: new Date().toISOString() })
       .eq('id', id);
-    await supabase
-      .from('workout_events')
-      .insert({ workout_link_id: id, event_type: 'opened' });
+    const { error } = await supabase.from('workout_events').insert({
+      user_id: userId,
+      workout_link_id: id,
+      event_type: 'opened',
+    });
+    if (error) console.warn('[FitLinks] markOpened event', error.message);
   }, []);
 
   const markDone = useCallback(async (id: string) => {
-    await supabase
-      .from('workout_events')
-      .insert({ workout_link_id: id, event_type: 'done' });
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const userId = session?.user?.id;
+    if (!userId) throw new Error('You must be signed in to mark a workout done.');
+
+    const { error } = await supabase.from('workout_events').insert({
+      user_id: userId,
+      workout_link_id: id,
+      event_type: 'done',
+    });
+    if (error) throw error;
   }, []);
 
   const value: WorkoutsContextValue = {
