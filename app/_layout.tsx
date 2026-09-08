@@ -13,6 +13,12 @@ import { getPendingRedirect, setPendingRedirect, clearPendingRedirect } from '..
 import { normalizeShareUrl } from '../src/utils/url';
 import { shouldHandleLegacyShare } from '../src/utils/shareGate';
 import { ErrorBoundary } from '../src/components/ErrorBoundary';
+import {
+  isPasswordRecoveryActive,
+  isPasswordRecoveryCallback,
+  parseAuthCallbackUrl,
+  setPasswordRecoveryActive,
+} from '../src/utils/passwordRecovery';
 
 function pickParam(value: unknown): string | undefined {
   if (value == null) return undefined;
@@ -59,7 +65,10 @@ export default function RootLayout() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, s) => {
+    } = supabase.auth.onAuthStateChange((event, s) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setPasswordRecoveryActive(true);
+      }
       if (!cancelled) setSession(s);
     });
 
@@ -69,11 +78,32 @@ export default function RootLayout() {
     };
   }, []);
 
-  // Single owner for legacy share navigation (cold + warm). +not-found does NOT navigate for legacy shares.
+  // Password-recovery deep links (email reset) plus legacy share URLs.
   useEffect(() => {
-    const handleUrl = (url: string | null) => {
+    const handleUrl = async (url: string | null) => {
       if (!url) return;
       if (loading) return;
+
+      const authParams = parseAuthCallbackUrl(url);
+      if (authParams && isPasswordRecoveryCallback(authParams, url)) {
+        try {
+          if (authParams.code) {
+            const { error } = await supabase.auth.exchangeCodeForSession(authParams.code);
+            if (error) throw error;
+          } else if (authParams.accessToken && authParams.refreshToken) {
+            const { error } = await supabase.auth.setSession({
+              access_token: authParams.accessToken,
+              refresh_token: authParams.refreshToken,
+            });
+            if (error) throw error;
+          }
+          setPasswordRecoveryActive(true);
+          router.replace('/reset-password');
+        } catch (err) {
+          console.warn('[FitLinks] password recovery link', err);
+        }
+        return;
+      }
 
       const norm = normalizeShareUrl(url);
       if (!norm?.sharedKey) return;
@@ -99,11 +129,13 @@ export default function RootLayout() {
       });
     };
 
-    // Cold start: check the URL that launched the app
-    Linking.getInitialURL().then(handleUrl);
+    Linking.getInitialURL().then((url) => {
+      void handleUrl(url);
+    });
 
-    // Warm start: listen for incoming URL events
-    const sub = Linking.addEventListener('url', (event) => handleUrl(event.url));
+    const sub = Linking.addEventListener('url', (event) => {
+      void handleUrl(event.url);
+    });
     return () => sub.remove();
   }, [router, session, loading]);
 
@@ -113,6 +145,13 @@ export default function RootLayout() {
 
     const inAuthGroup = segments[0] === '(auth)';
     const path = '/' + (segments.filter(Boolean).join('/') || '');
+    const onResetPassword = path === '/reset-password' || segments[0] === 'reset-password';
+    const onLegal = segments[0] === 'legal';
+
+    if (isPasswordRecoveryActive() && !onResetPassword) {
+      router.replace('/reset-password');
+      return;
+    }
 
     if (session && inAuthGroup) {
       // Post-login: check for pending redirect from deep link
@@ -128,6 +167,7 @@ export default function RootLayout() {
     }
 
     if (!session && !inAuthGroup) {
+      if (onResetPassword || onLegal) return;
       // Capture /import, /share, /import-share intent before redirecting to login (once per launch)
       const isShareIntent = path === '/import' || path === '/share' || path === '/import-share';
       if (isShareIntent && !hasStoredRedirectRef.current) {
@@ -218,6 +258,14 @@ function RootStack() {
         />
         <Stack.Screen
           name="import-share"
+          options={{ headerShown: false, presentation: 'card' }}
+        />
+        <Stack.Screen
+          name="reset-password"
+          options={{ headerShown: false, presentation: 'card' }}
+        />
+        <Stack.Screen
+          name="legal"
           options={{ headerShown: false, presentation: 'card' }}
         />
       </Stack>

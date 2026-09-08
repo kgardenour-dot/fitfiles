@@ -8,6 +8,7 @@ import {
   Image,
   Platform,
   ActivityIndicator,
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -81,6 +82,11 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ConfettiDots />
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile</Text>
       </View>
@@ -150,6 +156,16 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       ) : null}
 
+      <View style={styles.legalRow}>
+        <TouchableOpacity onPress={() => router.push('/legal/privacy')} accessibilityRole="link">
+          <Text style={styles.legalLink}>Privacy Policy</Text>
+        </TouchableOpacity>
+        <Text style={styles.legalDot}>·</Text>
+        <TouchableOpacity onPress={() => router.push('/legal/terms')} accessibilityRole="link">
+          <Text style={styles.legalLink}>Terms of Use</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.dangerSection}>
         <Text style={styles.dangerTitle}>Account</Text>
         <TouchableOpacity
@@ -185,6 +201,7 @@ export default function ProfileScreen() {
           resizeMode="contain"
         />
       </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -193,6 +210,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: Spacing.md,
   },
   header: {
     paddingHorizontal: Spacing.md,
@@ -312,6 +333,25 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     fontWeight: '600',
   },
+  legalRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  legalLink: {
+    color: Colors.aquaMint,
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+  },
+  legalDot: {
+    color: Colors.textMuted,
+    fontSize: FontSize.sm,
+  },
   dangerSection: {
     marginHorizontal: Spacing.md,
     marginBottom: Spacing.md,
@@ -367,9 +407,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   logoContainer: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'flex-end',
     alignItems: 'center',
+    paddingTop: Spacing.lg,
     paddingBottom: Spacing.md,
   },
   bottomLogo: {
